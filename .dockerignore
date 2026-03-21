@@ -1,0 +1,31 @@
+.git/
+.gitignore
+.env
+.claude/
+
+# PDF not needed at runtime — only used locally for preprocess.py
+info.pdf
+
+# Terraform — not needed in the image
+terraform/
+
+# Deploy artifacts
+deploy.sh
+deploy.zip
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Docs
+*.md
+demo.png

@@ -1,0 +1,7 @@
+flask
+anthropic
+python-dotenv
+pymupdf
+sentence-transformers
+numpy
+gunicorn

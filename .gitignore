@@ -1,0 +1,44 @@
+# ── Sensitive / personal ──────────────────────────────
+.env
+.file_id_cache.json
+
+# Any .tfvars file may contain secrets (API keys, passwords)
+terraform/*.tfvars
+
+# ── Terraform state & downloaded providers ────────────
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+# NOTE: terraform/.terraform.lock.hcl is intentionally NOT ignored —
+# commit it like package-lock.json to pin provider versions.
+
+# ── Deploy artifacts ───────────────────────────────────
+deploy.zip
+
+# ── Large source files (not needed at runtime) ────────
+*.pdf
+# NOTE: pages_data.json and embeddings.npy ARE committed — the Docker
+# build (local and CI) needs them. Regenerate with: python preprocess.py
+
+# ── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Virtual environments ──────────────────────────────
+venv/
+.venv/
+env/
+.env/
+
+# ── OS / editor ───────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# ── Claude Code internal ───────────────────────────────
+.claude
