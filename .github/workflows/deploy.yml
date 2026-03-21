@@ -31,8 +31,11 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/psych101-ai:${{ github.sha }}
             ${{ secrets.DOCKERHUB_USERNAME }}/psych101-ai:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Use the previous :latest image on Docker Hub as the layer cache.
+          # This persists forever (unlike GHA cache which expires after 7 days)
+          # so even a cold runner gets a warm cache from the last successful build.
+          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/psych101-ai:latest
+          cache-to: type=inline
 
       # ── Update Azure Web App to the new SHA-tagged image and restart ─────────
       - name: Log in to Azure
