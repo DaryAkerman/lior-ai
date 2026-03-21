@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Flush Python stdout/stderr immediately so logs appear in Azure without buffering
+ENV PYTHONUNBUFFERED=1
+
 # libgomp1 is required by PyTorch (used by sentence-transformers)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libgomp1 \
