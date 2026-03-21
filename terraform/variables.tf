@@ -25,5 +25,5 @@ variable "docker_image" {
 variable "sku_name" {
   description = "App Service Plan SKU. B1 is the cheapest tier with 24/7 uptime (Always On). Upgrade to B2 if you hit memory errors. Options: B1 (~$13/mo), B2 (~$26/mo), B3 (~$52/mo)."
   type        = string
-  default     = "B1"
+  default     = "B2"
 }
