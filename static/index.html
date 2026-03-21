@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>עוזר הלימוד – מבוא לפסיכולוגיה</title>
     <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -13,9 +13,11 @@
             font-family: 'Rubik', 'Arial Hebrew', Arial, sans-serif;
             background: #f3edf8;
             height: 100vh;
+            height: 100dvh; /* shrinks when mobile keyboard opens */
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            overscroll-behavior: none; /* prevents pull-to-refresh interfering */
         }
 
         /* ─── Header ─── */
@@ -55,6 +57,7 @@
             flex: 1; overflow-y: auto;
             padding: 20px 16px;
             display: flex; flex-direction: column; gap: 18px;
+            -webkit-overflow-scrolling: touch; /* smooth iOS scroll */
         }
         .chat-area::-webkit-scrollbar { width: 6px; }
         .chat-area::-webkit-scrollbar-thumb { background: #c5c5c5; border-radius: 3px; }
@@ -194,6 +197,8 @@
         .input-area {
             background: white;
             padding: 12px 16px;
+            /* Safe-area bottom padding for iPhone home bar */
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
             border-top: 1px solid #dde0e8;
             display: flex; gap: 10px; align-items: flex-end;
             flex-shrink: 0;
@@ -202,29 +207,49 @@
             flex: 1;
             border: 2px solid #e0e0e0; border-radius: 14px;
             padding: 11px 15px;
-            font-size: 15px; font-family: inherit;
+            font-size: 16px; /* ≥16px prevents iOS auto-zoom on focus */
+            font-family: inherit;
             resize: none; outline: none;
             line-height: 1.5; min-height: 46px; max-height: 120px;
             transition: border-color 0.2s;
             direction: rtl;
+            -webkit-appearance: none;
         }
         .input-area textarea:focus { border-color: #8134ad; }
         .input-area textarea::placeholder { color: #bbb; }
 
         .send-btn {
-            width: 46px; height: 46px;
+            width: 48px; height: 48px; /* slightly larger touch target */
             background: #5b1a7a; color: white;
             border: none; border-radius: 14px;
             cursor: pointer; font-size: 20px;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
             transition: background 0.2s, transform 0.1s;
+            -webkit-tap-highlight-color: transparent;
         }
         .send-btn:hover   { background: #6d2090; }
         .send-btn:active  { transform: scale(0.93); }
         .send-btn:disabled{ background: #bdbdbd; cursor: not-allowed; }
 
-        @media (max-width: 600px) { .msg { max-width: 92%; } }
+        /* ─── Mobile ─── */
+        @media (max-width: 600px) {
+            .msg { max-width: 92%; }
+
+            .header { padding: 10px 14px; gap: 10px; }
+            .header-icon { width: 38px; height: 38px; font-size: 20px; border-radius: 10px; }
+            .header-title { font-size: 15px; }
+            .header-sub   { display: none; } /* hide subtitle to save space */
+            .clear-btn { padding: 5px 10px; font-size: 12px; left: 12px; }
+
+            .welcome { padding: 30px 16px; }
+            .welcome .big-icon { font-size: 48px; margin-bottom: 12px; }
+            .welcome h2 { font-size: 18px; }
+            .welcome .tip { padding: 12px 14px; font-size: 14px; } /* larger tap area */
+
+            .chat-area { padding: 14px 12px; gap: 14px; }
+            .bubble { font-size: 15px; padding: 10px 14px; }
+        }
     </style>
 </head>
 <body>
