@@ -15,7 +15,12 @@ client = Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
 PAGES_FILE      = 'pages_data.json'
 EMBEDDINGS_FILE = 'embeddings.npy'
 MODEL_NAME      = 'paraphrase-multilingual-MiniLM-L12-v2'
-TOP_K           = 6   # pages retrieved per question
+TOP_K           = 10  # pages retrieved for general questions
+TOP_K_CHAPTER   = 15  # pages retrieved when search is scoped to a chapter
+TOP_K_SUMMARY   = 30  # pages retrieved for chapter-summary requests
+
+# Hebrew keywords that signal a broad/summary question
+_SUMMARY_KEYWORDS = {'סכם', 'תסכם', 'סיכום', 'תאר', 'הסבר', 'עיקרי', 'עיקר', 'מה עוסק', 'מה נלמד', 'בקצרה', 'כלל'}
 
 
 # ── Load pre-processed data ────────────────────────────────────────────────
@@ -35,6 +40,64 @@ print(f"✓ Loaded {len(pages_data)} pages from the book")
 print("Loading embedding model...")
 from sentence_transformers import SentenceTransformer
 embed_model = SentenceTransformer(MODEL_NAME)
+print("✓ Embedding model ready")
+
+
+# ── Chapter map ─────────────────────────────────────────────────────────────
+# Maps "פרק X" references in queries to the correct PDF page range.
+#
+# Key insight: "פרק X" appears as a RUNNING HEADER on every page inside that
+# chapter (and in the answer-key section). We cannot reliably detect chapter
+# START pages by scanning for that text. Instead we:
+#   1. Parse the TOC ('תוכן עניינים כללי') for book page numbers.
+#   2. Estimate the constant PDF↔book offset via distinctive chapter title phrases.
+#   3. Interpolate any chapters whose page numbers weren't captured from the TOC.
+
+HEBREW_ORDINALS = {
+    'ראשון': 1, 'שני': 2, 'שלישי': 3, 'רביעי': 4, 'חמישי': 5,
+    'שישי': 6, 'שביעי': 7, 'שמיני': 8, 'תשיעי': 9, 'עשירי': 10,
+    'אחד עשר': 11, 'שנים עשר': 12, 'שלושה עשר': 13, 'ארבעה עשר': 14,
+    'חמישה עשר': 15,
+}
+
+HEBREW_LETTERS = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5,
+    'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9, 'י': 10,
+}
+
+# ── Chapter map ─────────────────────────────────────────────────────────────
+# Hard-coded from 'תוכן עניינים כללי' (TOC, PDF pages 1-12).
+# PDF offset = 10  →  pdf_page = book_page + 10.
+# Chapters 7 and 9 are linearly interpolated (page numbers unclear in TOC).
+_CHAPTER_BOOK_STARTS = {
+    1:   3,   # הפסיכולוגיה בחיינו
+    2:  37,   # שיטות מחקר בפסיכולוגיה
+    3:  93,   # היסודות הביולוגיים של ההתנהגות
+    4: 147,   # חישה ותפיסה
+    5: 217,   # מודעות ומצבי תודעה
+    6: 261,   # למידה וניתוח התנהגות
+    7: 317,   # זיכרון (interpolated: midpoint of 261–373)
+    8: 373,   # תהליכים קוגניטיביים
+    9: 430,   # משכל והערכת משכל (interpolated: midpoint of 373–487)
+   10: 487,   # התפתחות האדם
+}
+_PDF_OFFSET = 10   # pdf_page = book_page + _PDF_OFFSET
+
+
+def _build_chapter_map(pages_data: list) -> dict:
+    last_page = pages_data[-1]['page']
+    starts = sorted(
+        (chap, max(13, bp + _PDF_OFFSET))
+        for chap, bp in _CHAPTER_BOOK_STARTS.items()
+    )
+    return {
+        chap: (start, starts[i + 1][1] - 1 if i + 1 < len(starts) else last_page)
+        for i, (chap, start) in enumerate(starts)
+    }
+
+
+chapter_map = _build_chapter_map(pages_data)
+print(f"✓ Chapter map: { {c: r for c, r in sorted(chapter_map.items())} }")
 print("✓ Ready!  Visit http://localhost:5000\n")
 
 
@@ -50,13 +113,53 @@ SYSTEM_PROMPT = """אתה עוזר לימוד אקדמי מועיל ומדויק
 תן תשובות ברורות, מובנות ומפורטות."""
 
 
-def find_relevant_pages(question: str) -> list[dict]:
-    """Return the TOP_K most semantically similar pages, sorted by page number."""
-    q_emb = embed_model.encode([question], normalize_embeddings=True)
-    scores = (page_embeddings @ q_emb.T).flatten()
-    top_idx = np.argsort(scores)[::-1][:TOP_K]
+def detect_chapter(question: str) -> int | None:
+    """Return the chapter number if the question explicitly references one."""
+    # Arabic numeral: "פרק 7"
+    m = re.search(r'פרק\s+(\d+)', question)
+    if m:
+        return int(m.group(1))
+    # Hebrew ordinal word: "פרק שביעי"
+    for word, num in HEBREW_ORDINALS.items():
+        if re.search(rf'פרק\s+{word}', question):
+            return num
+    # Hebrew letter: "פרק ז"
+    m = re.search(r'פרק\s+([א-י]+)\b', question)
+    if m:
+        return HEBREW_LETTERS.get(m.group(1))
+    return None
+
+
+def find_relevant_pages(question: str) -> tuple[list[dict], int | None]:
+    """
+    Return (pages, detected_chapter_num).
+
+    If the question mentions a chapter (e.g. 'פרק 7'), the semantic search
+    is restricted to that chapter's PDF pages so the answer stays focused.
+    Falls back to a full-book search if no chapter is detected or the chapter
+    is not in the map.
+    """
+    q_emb       = embed_model.encode([question], normalize_embeddings=True)
+    chapter_num = detect_chapter(question)
+
+    if chapter_num and chapter_num in chapter_map:
+        start, end = chapter_map[chapter_num]
+        indices    = [i for i, p in enumerate(pages_data) if start <= p['page'] <= end]
+        if indices:
+            is_summary = any(kw in question for kw in _SUMMARY_KEYWORDS)
+            top_k      = min(TOP_K_SUMMARY if is_summary else TOP_K_CHAPTER, len(indices))
+            ch_emb     = page_embeddings[indices]
+            scores     = (ch_emb @ q_emb.T).flatten()
+            top_local  = np.argsort(scores)[::-1][:top_k]
+            top_idx    = sorted([indices[j] for j in top_local],
+                                key=lambda i: pages_data[i]['page'])
+            return [pages_data[i] for i in top_idx], chapter_num
+
+    # Full-book search (no chapter detected, or chapter not mapped)
+    scores         = (page_embeddings @ q_emb.T).flatten()
+    top_idx        = np.argsort(scores)[::-1][:TOP_K]
     top_idx_sorted = sorted(top_idx, key=lambda i: pages_data[i]['page'])
-    return [pages_data[i] for i in top_idx_sorted]
+    return [pages_data[i] for i in top_idx_sorted], None
 
 
 def extract_page_numbers(text: str) -> list[int]:
@@ -70,6 +173,15 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+@app.route('/chapters')
+def chapters():
+    """Debug endpoint — shows the detected chapter → page range map."""
+    return jsonify({
+        str(chap): {'start': start, 'end': end}
+        for chap, (start, end) in sorted(chapter_map.items())
+    })
+
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data     = request.get_json()
@@ -78,15 +190,23 @@ def chat():
     if not question:
         return jsonify({'error': 'יש להזין שאלה'}), 400
 
-    # Retrieve relevant pages
-    relevant = find_relevant_pages(question)
+    relevant, chapter_num = find_relevant_pages(question)
 
     context = "\n\n".join(
         f"=== עמוד {p['page']} ===\n{p['text']}"
         for p in relevant
     )
 
+    # When the query targets a specific chapter, tell Claude explicitly so it
+    # stays focused and doesn't guess at scope.
+    chapter_note = (
+        f'שים לב: המשתמש שואל ספציפית על **פרק {chapter_num}** מהספר. '
+        f'התמקד אך ורק בתוכן פרק זה.\n\n'
+        if chapter_num else ''
+    )
+
     user_message = (
+        f'{chapter_note}'
         f'להלן קטעים רלוונטיים מהספר "מבוא לפסיכולוגיה":\n\n'
         f'{context}\n\n---\n\nשאלה: {question}'
     )
@@ -96,7 +216,7 @@ def chat():
         try:
             with client.messages.stream(
                 model='claude-opus-4-6',
-                max_tokens=1500,
+                max_tokens=4096,
                 system=SYSTEM_PROMPT,
                 messages=[{'role': 'user', 'content': user_message}]
             ) as stream:
