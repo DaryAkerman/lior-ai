@@ -173,6 +173,21 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+@app.route('/brain')
+def brain():
+    return send_from_directory('.', 'index.html')
+
+
+@app.route('/brain/brain.glb')
+def brain_glb():
+    return send_from_directory('.', 'brain.glb')
+
+
+@app.route('/brain/models/<path:filename>')
+def brain_models(filename):
+    return send_from_directory('models', filename)
+
+
 @app.route('/chapters')
 def chapters():
     """Debug endpoint — shows the detected chapter → page range map."""

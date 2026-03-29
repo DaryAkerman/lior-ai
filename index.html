@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>3D Brain Model</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #080818; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    #canvas { display: block; }
+
+    /* ── Loading ─────────────────────────────────────── */
+    #loading {
+      position: fixed; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #080818;
+      z-index: 999;
+      font-size: 13px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.45);
+      transition: opacity 0.7s ease;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+
+    /* ── Popup ─────────────────────────────────────── */
+    #popup {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.85);
+      opacity: 0;
+      pointer-events: none;
+      background: rgba(8, 12, 28, 0.96);
+      border: 1px solid rgba(120, 180, 255, 0.2);
+      border-radius: 18px;
+      padding: 28px 28px 22px;
+      max-width: 400px;
+      width: 90%;
+      color: white;
+      z-index: 200;
+      transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1),
+                  opacity 0.25s ease;
+      backdrop-filter: blur(24px);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.7),
+                  0 0 0 1px rgba(255,255,255,0.04),
+                  inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    #popup.open {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+      pointer-events: all;
+    }
+    #popup-bar { width: 48px; height: 4px; border-radius: 2px; margin-bottom: 18px; }
+    #popup-category {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: 2.5px; color: rgba(255,255,255,0.35); margin-bottom: 6px;
+    }
+    #popup-title {
+      font-size: 22px; font-weight: 700; margin-bottom: 14px;
+      color: #fff; line-height: 1.2;
+    }
+    #popup-desc {
+      font-size: 13.5px; line-height: 1.75;
+      color: rgba(255,255,255,0.68); margin-bottom: 22px;
+    }
+    .popup-btns { display: flex; gap: 10px; }
+    .pbtn {
+      padding: 10px 18px; border-radius: 10px; border: none;
+      cursor: pointer; font-size: 13px; font-weight: 600;
+      letter-spacing: 0.3px; transition: all 0.2s;
+    }
+    #btn-explore { flex: 1; background: linear-gradient(135deg, #3b7cf4, #8b42f5); color: #fff; }
+    #btn-explore:hover { opacity: 0.88; transform: translateY(-1px); }
+    #btn-close {
+      background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.65);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    #btn-close:hover { background: rgba(255,255,255,0.13); }
+
+    /* ── Tooltip ─────────────────────────────────────── */
+    #tooltip {
+      position: fixed;
+      background: rgba(8,12,28,0.92);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; padding: 6px 12px; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      pointer-events: none; z-index: 150;
+      opacity: 0; transition: opacity 0.15s;
+      white-space: nowrap; backdrop-filter: blur(10px);
+    }
+    #tooltip.show { opacity: 1; }
+
+    /* ── Top UI ─────────────────────────────────────── */
+    #hud-title {
+      position: fixed; top: 24px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 15px; font-weight: 700; letter-spacing: 4px;
+      text-transform: uppercase; color: rgba(255,255,255,0.9);
+      z-index: 50; text-shadow: 0 0 20px rgba(100,160,255,0.4);
+    }
+    #hud-sub {
+      position: fixed; top: 50px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,0.3); z-index: 50; transition: color 0.4s;
+    }
+
+    /* ── Back button ─────────────────────────────────── */
+    #btn-back {
+      position: fixed; top: 22px; left: 22px;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.8); padding: 9px 18px;
+      border-radius: 30px; cursor: pointer; font-size: 13px;
+      font-weight: 600; z-index: 100;
+      opacity: 0; pointer-events: none; transition: all 0.3s;
+      backdrop-filter: blur(12px);
+    }
+    #btn-back.show { opacity: 1; pointer-events: all; }
+    #btn-back:hover { background: rgba(255,255,255,0.13); transform: translateX(-2px); }
+
+    /* ── Legend ─────────────────────────────────────── */
+    #legend {
+      position: fixed; bottom: 28px; left: 28px;
+      z-index: 50; display: flex; flex-direction: column;
+      gap: 5px; transition: opacity 0.4s;
+    }
+    #legend.hidden { opacity: 0; pointer-events: none; }
+    .legend-item {
+      display: flex; align-items: center; gap: 8px;
+      cursor: pointer; padding: 4px 8px; border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .legend-item:hover { background: rgba(255,255,255,0.05); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .legend-label { font-size: 11px; color: rgba(255,255,255,0.5); font-weight: 500; }
+
+    /* ── Dim overlay ─────────────────────────────────── */
+    #dim {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      z-index: 190; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    #dim.show { opacity: 1; pointer-events: all; }
+
+    /* ── Mobile / tablet overrides ───────────────────────── */
+    @media (max-width: 768px) {
+      #hud-title { font-size: 12px; letter-spacing: 2.5px; top: 16px; }
+      #hud-sub   { font-size: 10px; top: 38px; }
+
+      #popup { padding: 22px 18px 18px; border-radius: 14px; }
+      #popup-title { font-size: 18px; }
+      #popup-desc  { font-size: 13px; margin-bottom: 16px; }
+      .pbtn { padding: 11px 14px; font-size: 12px; }
+
+      #btn-back { top: 14px; left: 14px; padding: 10px 16px; font-size: 12px; }
+
+      #legend { bottom: 16px; left: 14px; gap: 3px; }
+      .legend-item { padding: 5px 8px; }
+      .legend-label { font-size: 10px; }
+      .legend-dot   { width: 8px; height: 8px; }
+
+      .ann-label { font-size: 11px; padding: 7px 12px; min-height: 34px;
+                   display: flex; align-items: center; }
+    }
+    @media (max-width: 480px) {
+      #legend { display: none; }   /* too cramped on phones — use annotation labels */
+    }
+
+    /* ── Annotation labels ───────────────────────────────── */
+    #ann-svg {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 39;
+    }
+    .ann-label {
+      position: fixed;
+      background: rgba(6, 9, 22, 0.82);
+      border: 1px solid;
+      border-radius: 8px;
+      padding: 5px 11px;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.6px;
+      color: rgba(255,255,255,0.88);
+      cursor: pointer;
+      z-index: 40;
+      pointer-events: all;
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+      user-select: none;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 4px 18px rgba(0,0,0,0.5);
+      transition: background 0.18s, transform 0.18s, opacity 0.35s;
+    }
+    .ann-label:hover {
+      background: rgba(22, 34, 72, 0.97);
+      transform: translate(-50%, -50%) scale(1.07);
+    }
+    .ann-label.ann-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    /* SVG line + dot fade */
+    #ann-svg line, #ann-svg circle {
+      transition: opacity 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+<svg id="ann-svg"></svg>
+<div id="loading">Loading Brain Model…</div>
+<div id="hud-title">Brain Model</div>
+<div id="hud-sub">Click any region to explore</div>
+<button id="btn-back">← Back to full brain</button>
+<div id="tooltip"></div>
+<div id="legend"></div>
+
+<div id="dim"></div>
+<div id="popup">
+  <div id="popup-bar"></div>
+  <div id="popup-category"></div>
+  <div id="popup-title"></div>
+  <div id="popup-desc"></div>
+  <div class="popup-btns">
+    <button class="pbtn" id="btn-explore">Explore Sub-regions →</button>
+    <button class="pbtn" id="btn-close">Close</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://esm.sh/three@0.155.0",
+    "three/addons/": "https://esm.sh/three@0.155.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+// ─── Brain region data ───────────────────────────────────────────────────────
+// positions are in the normalized brain coordinate space
+// (brain ~3 units wide, centered at origin, Y+ up, Z+ front)
+const BRAIN = {
+  'frontal': {
+    name: 'Frontal Lobe', category: 'Cerebral Cortex', color: 0xf87171, modelFile: 'frontal.glb',
+    desc: 'The largest lobe, responsible for executive functions — planning, decision-making, impulse control, working memory, and voluntary movement. Home to your personality and judgment.',
+    pos: [0, 0.55, 1.35], scl: [1.85, 1.25, 1.3],
+    subs: [
+      { id:'pfc',   name:'Prefrontal Cortex',      category:'Frontal Lobe', color:0xef4444,
+        desc:'The "CEO" of the brain. Controls decision-making, planning, personality expression, and social behavior. Heavily implicated in ADHD and schizophrenia.',
+        pos:[-0.05, 0.45, 1.2], scl:[1.1, 0.8, 0.75] },
+      { id:'mc',    name:'Motor Cortex',            category:'Frontal Lobe', color:0xfb923c,
+        desc:'The primary motor cortex controls all voluntary body movements. It maps the entire body in a "motor homunculus" — disproportionately large for hands and face.',
+        pos:[0, 0.9, 0.4], scl:[1.55, 0.45, 0.5] },
+      { id:'broca', name:"Broca's Area",            category:'Frontal Lobe', color:0xfbbf24,
+        desc:"Located in the left frontal lobe, Broca's area drives speech production. Damage here causes halting, effortful speech while comprehension stays mostly intact.",
+        pos:[-0.85, 0.15, 0.85], scl:[0.5, 0.4, 0.5] },
+      { id:'ofc',   name:'Orbitofrontal Cortex',    category:'Frontal Lobe', color:0xf97316,
+        desc:'Sits just above the eye sockets. Key for emotional decision-making, reward processing, and impulse control. Heavily connected to the limbic system.',
+        pos:[0, -0.05, 1.55], scl:[0.85, 0.45, 0.5] },
+    ]
+  },
+  'parietal': {
+    name: 'Parietal Lobe', category: 'Cerebral Cortex', color: 0xfb923c, modelFile: 'parietal.glb',
+    desc: 'Integrates sensory input — touch, pain, temperature, proprioception — and handles spatial reasoning, navigation, and body awareness.',
+    pos: [0, 1.2, -0.15], scl: [1.7, 0.95, 1.05],
+    subs: [
+      { id:'s1',  name:'Somatosensory Cortex',      category:'Parietal Lobe', color:0xfcd34d,
+        desc:'Receives and processes all body sensation. Like the motor cortex, it contains a "sensory homunculus" — the lips and hands have enormous representation here.',
+        pos:[0, 0.85, 0.3], scl:[1.45, 0.42, 0.5] },
+      { id:'ppc', name:'Posterior Parietal Cortex', category:'Parietal Lobe', color:0xf59e0b,
+        desc:'Integrates visual and spatial information to guide movements and build an internal map of surrounding space. Damage causes "neglect" syndrome.',
+        pos:[0, 1.1, -0.55], scl:[1.35, 0.6, 0.65] },
+      { id:'ag',  name:'Angular Gyrus',             category:'Parietal Lobe', color:0xd97706,
+        desc:'A hub region at the junction of parietal, temporal, and occipital lobes. Involved in language, number processing, spatial cognition, and self-awareness.',
+        pos:[-0.8, 0.7, -0.4], scl:[0.55, 0.45, 0.5] },
+    ]
+  },
+  'temporal-l': {
+    name: 'Temporal Lobe (Left)', category: 'Cerebral Cortex', color: 0xfde68a, modelFile: 'temporal_l.glb',
+    desc: 'The left temporal lobe dominates language comprehension, verbal memory, and semantic knowledge. Also processes auditory signals.',
+    pos: [-1.55, -0.05, 0.15], scl: [0.7, 0.95, 1.45],
+    subs: [
+      { id:'a1-l',     name:'Auditory Cortex',          category:'Left Temporal', color:0xfef08a,
+        desc:'Primary auditory cortex (A1) decodes the pitch, rhythm, and location of sounds arriving from both ears. The left side is more attuned to speech sounds.',
+        pos:[-1.25, 0.25, 0.25], scl:[0.5, 0.42, 0.5] },
+      { id:'wernicke', name:"Wernicke's Area",           category:'Left Temporal', color:0xfacc15,
+        desc:"Wernicke's area enables language comprehension. Damage produces 'fluent aphasia' — patients speak in grammatical-sounding but meaningless word-salad.",
+        pos:[-1.3, 0.0, -0.35], scl:[0.5, 0.4, 0.5] },
+      { id:'itg',      name:'Inferior Temporal Gyrus',  category:'Left Temporal', color:0xca8a04,
+        desc:'Involved in high-level visual processing and object recognition, particularly matching visual input to verbal labels stored in semantic memory.',
+        pos:[-1.35, -0.4, -0.1], scl:[0.5, 0.4, 0.6] },
+    ]
+  },
+  'temporal-r': {
+    name: 'Temporal Lobe (Right)', category: 'Cerebral Cortex', color: 0xfde68a, modelFile: 'temporal_r.glb',
+    desc: 'The right temporal lobe excels at music recognition, face identification, and non-verbal pattern recognition. Spatial memory also lives here.',
+    pos: [1.55, -0.05, 0.15], scl: [0.7, 0.95, 1.45],
+    subs: [
+      { id:'a1-r', name:'Auditory Cortex',              category:'Right Temporal', color:0xfef08a,
+        desc:'The right auditory cortex specialises in processing music, tone, and the emotional prosody of voices — the "how" of speech rather than the "what".',
+        pos:[1.25, 0.25, 0.25], scl:[0.5, 0.42, 0.5] },
+      { id:'ffa',  name:'Fusiform Face Area',           category:'Right Temporal', color:0xeab308,
+        desc:'A dedicated face-recognition module. It activates strongly to human faces, fires less for objects, and its damage causes prosopagnosia — the inability to recognise faces.',
+        pos:[1.35, -0.05, -0.15], scl:[0.5, 0.4, 0.55] },
+      { id:'mst',  name:'Parahippocampal Place Area',   category:'Right Temporal', color:0xa16207,
+        desc:'Responds powerfully to images of places and scenes, forming the neural basis of spatial navigation and "getting your bearings" in an environment.',
+        pos:[1.3, -0.4, -0.2], scl:[0.5, 0.4, 0.55] },
+    ]
+  },
+  'occipital': {
+    name: 'Occipital Lobe', category: 'Cerebral Cortex', color: 0xa78bfa, modelFile: 'occipital.glb',
+    desc: "The brain's dedicated visual processing centre. Receives raw input from the eyes and constructs our rich perception of colour, shape, motion, and depth.",
+    pos: [0, 0.35, -1.55], scl: [1.5, 1.0, 0.85],
+    subs: [
+      { id:'v1', name:'Primary Visual Cortex (V1)', category:'Occipital Lobe', color:0xc084fc,
+        desc:"V1 is the brain's first cortical processing stage for vision. It detects edges, orientation, contrast, and spatial frequency before passing data to higher areas.",
+        pos:[0, 0.25, -1.3], scl:[0.85, 0.6, 0.4] },
+      { id:'v4', name:'V4 — Colour Area',           category:'Occipital Lobe', color:0x8b5cf6,
+        desc:'V4 processes colour and form. Patients with damage here see the world in shades of grey (cerebral achromatopsia) despite having normal eyes.',
+        pos:[-0.6, 0.5, -1.1], scl:[0.45, 0.4, 0.4] },
+      { id:'mt', name:'MT / V5 — Motion Area',      category:'Occipital Lobe', color:0x7c3aed,
+        desc:'Area MT (middle temporal, also called V5) is specialised for visual motion. Damage produces akinetopsia — the inability to see movement, only frozen snapshots.',
+        pos:[0.6, 0.5, -1.1], scl:[0.45, 0.4, 0.4] },
+    ]
+  },
+  'cerebellum': {
+    name: 'Cerebellum', category: 'Hindbrain', color: 0x34d399, modelFile: 'cerebellum.glb',
+    desc: 'The "little brain" packs more neurons than the rest of the brain combined. It fine-tunes balance, coordination, and motor learning — playing an instrument, riding a bike.',
+    pos: [0, -0.55, -1.15], scl: [1.35, 0.8, 0.9],
+    subs: [
+      { id:'cort-cb', name:'Cerebellar Cortex',       category:'Cerebellum', color:0x6ee7b7,
+        desc:'The layered outer surface containing Purkinje cells — some of the largest neurons in the brain. It receives and integrates sensory and motor signals to compute corrections.',
+        pos:[0, -0.35, -1.05], scl:[1.15, 0.38, 0.72] },
+      { id:'vermis',  name:'Vermis',                  category:'Cerebellum', color:0x10b981,
+        desc:'The narrow midline strip of the cerebellum coordinates axial (trunk and limb) movements, posture, gait, and eye motion. Vermis damage causes stumbling and wide-based gait.',
+        pos:[0, -0.58, -1.12], scl:[0.32, 0.52, 0.7] },
+      { id:'dcn',     name:'Deep Cerebellar Nuclei',  category:'Cerebellum', color:0x059669,
+        desc:'Four pairs of nuclei buried inside the cerebellum (dentate, interpositus, fastigial, vestibular). They are the sole output gateway of the cerebellum.',
+        pos:[0, -0.70, -0.92], scl:[0.65, 0.32, 0.42] },
+    ]
+  },
+  'brainstem': {
+    name: 'Brainstem', category: 'Hindbrain / Midbrain', color: 0xf472b6, modelFile: 'brainstem.glb',
+    desc: "The brainstem is life's control tower, governing breathing, heart rate, blood pressure, and arousal. It connects the cerebrum to the spinal cord and hosts 10 of 12 cranial nerves.",
+    pos: [0, -0.85, -0.05], scl: [0.62, 1.05, 0.62],
+    subs: [
+      { id:'midbrain', name:'Midbrain (Mesencephalon)', category:'Brainstem', color:0xec4899,
+        desc:'Controls eye movements, pupil dilation, and auditory/visual reflexes. Contains the substantia nigra (dopamine) and red nucleus (motor coordination).',
+        pos:[0, -0.52, -0.05], scl:[0.52, 0.38, 0.52] },
+      { id:'pons',     name:'Pons',                     category:'Brainstem', color:0xf9a8d4,
+        desc:'Latin for "bridge". Connects cerebellum to cortex, regulates sleep/wake cycles, respiration, and carries signals for hearing, taste, and facial sensation.',
+        pos:[0, -0.88, -0.05], scl:[0.58, 0.38, 0.58] },
+      { id:'medulla',  name:'Medulla Oblongata',         category:'Brainstem', color:0xbe185d,
+        desc:'The most vital brain region. Controls heartbeat, blood pressure, and breathing. Also handles vomiting, coughing, and sneezing reflexes. Damage is immediately life-threatening.',
+        pos:[0, -1.22, -0.05], scl:[0.48, 0.38, 0.48] },
+    ]
+  },
+  'limbic': {
+    name: 'Limbic System', category: 'Subcortical', color: 0x60a5fa, modelFile: 'limbic.glb',
+    desc: 'The emotional and memory core of the brain. Bridges primitive survival instincts with higher cortical reasoning. Regulates emotion, motivation, memory, and the stress response.',
+    pos: [0, 0.05, 0.1], scl: [0.72, 0.65, 0.72],
+    subs: [
+      { id:'hippo',  name:'Hippocampus',     category:'Limbic System', color:0x3b82f6,
+        desc:"The brain's memory writer. Converts short-term experience into long-term memory and encodes spatial maps for navigation. One of the first casualties in Alzheimer's disease.",
+        pos:[-0.52, -0.28, -0.22], scl:[0.48, 0.28, 0.62] },
+      { id:'amyg',   name:'Amygdala',        category:'Limbic System', color:0x8b5cf6,
+        desc:'The threat-detection nucleus. Triggers the fight-or-flight response in milliseconds and stamps emotional significance onto memories. Central to fear, anxiety, and aggression.',
+        pos:[-0.62, -0.08, 0.35], scl:[0.32, 0.28, 0.32] },
+      { id:'thal',   name:'Thalamus',        category:'Limbic System', color:0x0ea5e9,
+        desc:'The grand relay station. Nearly all sensory information (except smell) is routed through the thalamus before reaching the cortex. Also regulates consciousness and alertness.',
+        pos:[0, 0.22, -0.08], scl:[0.58, 0.42, 0.58] },
+      { id:'hypo',   name:'Hypothalamus',    category:'Limbic System', color:0x06b6d4,
+        desc:"A tiny but mighty region controlling hunger, thirst, temperature, sleep, and the entire endocrine system via the pituitary gland. The brain's homeostatic thermostat.",
+        pos:[0, -0.18, 0.22], scl:[0.38, 0.28, 0.38] },
+      { id:'cingul', name:'Cingulate Cortex',category:'Limbic System', color:0x38bdf8,
+        desc:'A curved strip wrapping the corpus callosum. The anterior cingulate handles error detection, conflict monitoring, and empathy; the posterior cingulate aids autobiographical memory.',
+        pos:[0, 0.45, -0.05], scl:[0.32, 0.25, 0.9] },
+    ]
+  },
+};
+
+// ─── Region centers for hit-point detection ──────────────────────────────────
+// Each entry: { id, pos: THREE.Vector3, radius }  (radius ≈ rough lobe size)
+const REGION_CENTERS = Object.entries(BRAIN).map(([id, d]) => ({
+  id,
+  pos: new THREE.Vector3(...d.pos),
+  radius: Math.max(...d.scl) * 1.0,
+}));
+
+// ─── Renderer / Scene / Camera ───────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x080818);
+renderer.shadowMap.enabled = true;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(44, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 1.2, 6.5);
+
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.06;
+controls.minDistance = 2.8;
+controls.maxDistance = 14;
+controls.target.set(0, 0.1, 0);
+
+// ─── Lighting ────────────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+sun.position.set(6, 9, 6);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x8090ff, 0.4);
+fill.position.set(-5, -2, -5);
+scene.add(fill);
+const rim = new THREE.PointLight(0xff80a0, 0.5, 18);
+rim.position.set(0, 4, 2);
+scene.add(rim);
+
+// Hover glow light — moves to hovered region
+const glowLight = new THREE.PointLight(0xffffff, 0, 4);
+scene.add(glowLight);
+
+// ─── Starfield ───────────────────────────────────────────────────────────────
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(3000 * 3);
+for (let i = 0; i < starPos.length; i++) starPos[i] = (Math.random() - 0.5) * 60;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x2a3550, size: 0.06 })));
+
+// ─── Root group (for float animation) ────────────────────────────────────────
+const root = new THREE.Group();
+scene.add(root);
+
+// ─── Helper: hex color string ─────────────────────────────────────────────────
+function hex(c) { return '#' + new THREE.Color(c).getHexString(); }
+
+// ─── Helper: make a hover-indicator sphere ────────────────────────────────────
+function makeIndicator(pos, scl, color) {
+  const g = new THREE.SphereGeometry(1, 32, 20);
+  const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({
+    color,
+    transparent: true,
+    opacity: 0,
+    shininess: 40,
+    specular: new THREE.Color(0x333333),
+  }));
+  m.position.set(...pos);
+  m.scale.set(...scl);
+  return m;
+}
+
+// ─── Helper: make a sub-region sphere (for sub-view) ─────────────────────────
+function makeSubSphere(pos, scl, color, opacity = 0) {
+  const col = new THREE.Color(color);
+  const g = new THREE.SphereGeometry(1, 48, 32);
+  const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({
+    color,
+    transparent: true,
+    opacity,
+    shininess: 120,
+    specular: new THREE.Color(0xffffff).multiplyScalar(0.35),
+    emissive: col.clone().multiplyScalar(0.20),
+  }));
+  m.position.set(...pos);
+  m.scale.set(...scl);
+  return m;
+}
+
+// ─── Helper: outer glow shell around a sub-sphere ────────────────────────────
+function makeGlowShell(pos, scl, color, opacity = 0) {
+  const col = new THREE.Color(color);
+  const g = new THREE.SphereGeometry(1, 32, 20);
+  const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({
+    color: col,
+    transparent: true,
+    opacity,
+    shininess: 0,
+    emissive: col.clone().multiplyScalar(0.6),
+    depthWrite: false,
+    side: THREE.BackSide,
+  }));
+  // Slightly larger than the inner blob
+  m.position.set(...pos);
+  m.scale.set(scl[0] * 1.22, scl[1] * 1.22, scl[2] * 1.22);
+  return m;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+let view = 'main';
+let glbBrain = null;
+let glbMeshes = [];             // all Mesh objects inside the loaded GLB
+let glbTargetOpacity = 1;       // for smooth fade
+let glbOriginalMaterials = [];  // { mesh, mat } — to restore after sub-view
+let hoveredRegionId = null;
+const indicatorMeshes = {};     // regionId → THREE.Mesh (hover indicator spheres)
+const subMeshes = [];           // sphere meshes shown in sub-view
+const glowShells = [];          // outer glow meshes paired with sub-spheres
+
+// ─── Touch device detection ───────────────────────────────────────────────────
+const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+// ─── Raycaster ───────────────────────────────────────────────────────────────
+const ray = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+// ─── Find closest brain region to a world-space point ────────────────────────
+function regionAtPoint(worldPt) {
+  let best = null, bestDist = Infinity;
+  for (const rc of REGION_CENTERS) {
+    const d = worldPt.distanceTo(rc.pos);
+    if (d < bestDist) { bestDist = d; best = rc.id; }
+  }
+  return best;
+}
+
+// ─── Build hover-indicator spheres ───────────────────────────────────────────
+function buildIndicators() {
+  Object.entries(BRAIN).forEach(([id, d]) => {
+    const mesh = makeIndicator(d.pos, d.scl, d.color);
+    mesh.userData = { id, kind: 'indicator', d };
+    root.add(mesh);
+    indicatorMeshes[id] = mesh;
+  });
+}
+
+// ─── GLB loading ─────────────────────────────────────────────────────────────
+const loader = new GLTFLoader();
+loader.load('./brain.glb',
+  (gltf) => {
+    glbBrain = gltf.scene;
+
+    // Auto-scale & center
+    const box = new THREE.Box3().setFromObject(glbBrain);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    glbBrain.position.sub(center);
+    // Scale so the brain spans ~3.2 units — matching the BRAIN data coordinate space
+    const scaleFactor = 3.2 / Math.max(size.x, size.y, size.z);
+    glbBrain.scale.setScalar(scaleFactor);
+    // Small Y offset so the visual center matches the camera target
+    glbBrain.position.y += 0.1;
+
+    // Collect meshes for raycasting; store original materials
+    glbBrain.traverse(child => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        glbMeshes.push(child);
+        // Ensure material supports emissive for hover glow
+        if (child.material) {
+          // clone to avoid mutating shared materials
+          child.material = child.material.clone();
+          child.material.transparent = true;
+          child.material.opacity = 1;
+          glbOriginalMaterials.push({ mesh: child, opacity: 1 });
+        }
+      }
+    });
+
+    root.add(glbBrain);
+
+    buildIndicators();
+    buildLegend();
+    buildAnnotations();
+
+    // Fade out loading screen
+    const loadEl = document.getElementById('loading');
+    loadEl.classList.add('fade');
+    setTimeout(() => loadEl.remove(), 800);
+  },
+  (progress) => {
+    if (progress.total) {
+      const pct = Math.round(progress.loaded / progress.total * 100);
+      document.getElementById('loading').textContent = `Loading Brain Model… ${pct}%`;
+    }
+  },
+  (err) => {
+    console.error('GLB load error:', err);
+    document.getElementById('loading').textContent = 'Error loading brain.glb — serve via a local web server.';
+  }
+);
+
+// ─── Popup ────────────────────────────────────────────────────────────────────
+const popup    = document.getElementById('popup');
+const dim      = document.getElementById('dim');
+const btnClose = document.getElementById('btn-close');
+const btnExplore = document.getElementById('btn-explore');
+let popupData = null;
+
+function openPopup(d, isSub) {
+  popupData = d;
+  document.getElementById('popup-bar').style.background = hex(d.color);
+  document.getElementById('popup-category').textContent = d.category;
+  document.getElementById('popup-title').textContent = d.name;
+  document.getElementById('popup-desc').textContent = d.desc;
+  btnExplore.style.display = (!isSub && d.subs && d.subs.length) ? 'block' : 'none';
+  popup.classList.add('open');
+  dim.classList.add('show');
+}
+
+function closePopup() {
+  popup.classList.remove('open');
+  dim.classList.remove('show');
+}
+
+dim.addEventListener('click', closePopup);
+btnClose.addEventListener('click', closePopup);
+btnExplore.addEventListener('click', () => {
+  closePopup();
+  if (popupData) enterSubView(popupData);
+});
+
+// ─── Camera animation ─────────────────────────────────────────────────────────
+let camAnim = null;
+function animCam(toPos, toTarget, dur = 0.55) {
+  if (camAnim) camAnim.active = false;
+  const from  = camera.position.clone();
+  const fromT = controls.target.clone();
+  const to    = new THREE.Vector3(...toPos);
+  const toT   = new THREE.Vector3(...toTarget);
+  const start = performance.now();
+  const obj = { active: true };
+  camAnim = obj;
+  function step(now) {
+    if (!obj.active) return;
+    const t = Math.min((now - start) / (dur * 1000), 1);
+    const e = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(from, to, e);
+    controls.target.lerpVectors(fromT, toT, e);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ─── Enter sub-view ──────────────────────────────────────────────────────────
+function enterSubView(d) {
+  view = 'sub';
+  clearHover();
+
+  // Force transparent on GLB before dimming so the fade can start
+  if (glbBrain) {
+    glbBrain.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.material.transparent = true;
+        child.material.needsUpdate = true;
+      }
+    });
+  }
+  glbTargetOpacity = 0.12;
+
+  Object.values(indicatorMeshes).forEach(m => { m.userData.targetOp = 0; });
+
+  // Clear previous blobs + shells
+  subMeshes.forEach(m => root.remove(m));
+  subMeshes.length = 0;
+  glowShells.forEach(m => root.remove(m));
+  glowShells.length = 0;
+
+  // Build a glowing blob + outer shell for every sub-region
+  d.subs.forEach(s => {
+    // Outer glow shell (BackSide, very transparent)
+    const shell = makeGlowShell(s.pos, s.scl, s.color, 0);
+    shell.userData = { targetOp: 0.18 };
+    root.add(shell);
+    glowShells.push(shell);
+
+    // Inner blob (clickable)
+    const m = makeSubSphere(s.pos, s.scl, s.color, 0);
+    m.userData = { id: s.id, kind: 'sub', d: s, targetOp: 1.0 };
+    root.add(m);
+    subMeshes.push(m);
+  });
+
+  buildSubAnnotations(d.subs);
+
+  document.getElementById('btn-back').classList.add('show');
+  document.getElementById('hud-sub').textContent = `Exploring: ${d.name}`;
+  document.getElementById('legend').classList.add('hidden');
+
+  const p = d.pos;
+  const dist = 5.5;
+  animCam([p[0] * 0.5, p[1] * 0.3 + 1.0, p[2] * 0.4 + dist], p, 0.7);
+}
+
+// ─── Back to main ────────────────────────────────────────────────────────────
+function backToMain() {
+  view = 'main';
+  closePopup();
+  clearHover();
+
+  // Restore GLB opacity
+  glbTargetOpacity = 1;
+
+  // Fade out blobs + shells, then remove
+  subMeshes.forEach(m => { m.userData.targetOp = 0; });
+  glowShells.forEach(m => { m.userData.targetOp = 0; });
+  clearSubAnnotations();
+  setTimeout(() => {
+    subMeshes.forEach(m => root.remove(m));
+    subMeshes.length = 0;
+    glowShells.forEach(m => root.remove(m));
+    glowShells.length = 0;
+  }, 700);
+
+  document.getElementById('btn-back').classList.remove('show');
+  document.getElementById('hud-sub').textContent = 'Click any region to explore';
+  document.getElementById('legend').classList.remove('hidden');
+
+  animCam([0, 1.2, 6.5], [0, 0.1, 0], 0.7);
+}
+
+document.getElementById('btn-back').addEventListener('click', backToMain);
+
+// ─── Hover state management ───────────────────────────────────────────────────
+function clearHover() {
+  if (hoveredRegionId) {
+    const ind = indicatorMeshes[hoveredRegionId];
+    if (ind) ind.userData.targetOp = 0;
+    glowLight.intensity = 0;
+    hoveredRegionId = null;
+  }
+  canvas.style.cursor = 'default';
+  tooltip.classList.remove('show');
+}
+
+function setHover(regionId, screenX, screenY) {
+  if (hoveredRegionId === regionId) {
+    // Just update tooltip position
+    tooltip.style.left = (screenX + 14) + 'px';
+    tooltip.style.top  = (screenY - 10) + 'px';
+    return;
+  }
+  clearHover();
+  hoveredRegionId = regionId;
+  const d = BRAIN[regionId];
+  const ind = indicatorMeshes[regionId];
+  if (ind) {
+    ind.userData.targetOp = 0.28;
+    // Move glow light to region center
+    glowLight.color.set(d.color);
+    glowLight.position.copy(ind.position);
+    glowLight.intensity = 1.2;
+  }
+  canvas.style.cursor = 'pointer';
+  tooltip.textContent = d.name;
+  tooltip.style.left = (screenX + 14) + 'px';
+  tooltip.style.top  = (screenY - 10) + 'px';
+  tooltip.classList.add('show');
+}
+
+// ─── Mouse events ─────────────────────────────────────────────────────────────
+const tooltip = document.getElementById('tooltip');
+
+canvas.addEventListener('mousemove', e => {
+  if (isTouchDevice) return;   // no hover on touch — tap opens popup directly
+  if (popup.classList.contains('open')) return;
+
+  mouse.x = (e.clientX / innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(mouse, camera);
+
+  if (view === 'main') {
+    if (glbMeshes.length === 0) return;
+    const hits = ray.intersectObjects(glbMeshes, false);
+    if (hits.length) {
+      // Convert hit point from world space to brain local space
+      const worldPt = hits[0].point.clone();
+      // The root group has a floating animation; we need to account for it
+      const localPt = root.worldToLocal(worldPt.clone());
+      const id = regionAtPoint(localPt);
+      if (id) setHover(id, e.clientX, e.clientY);
+      else clearHover();
+    } else {
+      clearHover();
+    }
+  } else {
+    // Sub-view: raycast against sub spheres
+    const hits = ray.intersectObjects(subMeshes, false);
+    if (hits.length) {
+      const { d } = hits[0].object.userData;
+      canvas.style.cursor = 'pointer';
+      tooltip.textContent = d.name;
+      tooltip.style.left = (e.clientX + 14) + 'px';
+      tooltip.style.top  = (e.clientY - 10) + 'px';
+      tooltip.classList.add('show');
+      // Emissive highlight on sub sphere
+      hits[0].object.material.emissive = new THREE.Color(d.color);
+      hits[0].object.material.emissiveIntensity = 0.3;
+    } else {
+      canvas.style.cursor = 'default';
+      tooltip.classList.remove('show');
+      subMeshes.forEach(m => { m.material.emissiveIntensity = 0; });
+    }
+  }
+});
+
+// ─── Shared tap/click handler ─────────────────────────────────────────────────
+function handleCanvasTap(clientX, clientY) {
+  if (popup.classList.contains('open')) return;
+
+  mouse.x = (clientX / innerWidth) * 2 - 1;
+  mouse.y = -(clientY / innerHeight) * 2 + 1;
+  ray.setFromCamera(mouse, camera);
+
+  if (view === 'main') {
+    if (glbMeshes.length === 0) return;
+    const hits = ray.intersectObjects(glbMeshes, false);
+    if (hits.length) {
+      const localPt = root.worldToLocal(hits[0].point.clone());
+      const id = regionAtPoint(localPt);
+      if (id) openPopup(BRAIN[id], false);
+    }
+  } else {
+    const hits = ray.intersectObjects(subMeshes, false);
+    if (hits.length) {
+      const { d } = hits[0].object.userData;
+      openPopup(d, true);
+    }
+  }
+}
+
+canvas.addEventListener('click', e => handleCanvasTap(e.clientX, e.clientY));
+
+// ─── Touch support ────────────────────────────────────────────────────────────
+let touchStartX = 0, touchStartY = 0;
+canvas.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+canvas.addEventListener('touchend', e => {
+  if (e.changedTouches.length !== 1) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - touchStartX;
+  const dy = t.clientY - touchStartY;
+  // Only treat as tap if finger barely moved (not a drag/orbit)
+  if (Math.sqrt(dx * dx + dy * dy) < 12) handleCanvasTap(t.clientX, t.clientY);
+}, { passive: true });
+
+// ─── Legend ───────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const legendEl = document.getElementById('legend');
+  Object.entries(BRAIN).forEach(([id, d]) => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.innerHTML = `<div class="legend-dot" style="background:${hex(d.color)}"></div>
+                      <div class="legend-label">${d.name}</div>`;
+    item.addEventListener('click', () => openPopup(d, false));
+    legendEl.appendChild(item);
+  });
+}
+
+// ─── Resize ───────────────────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ─── Annotation labels (floating strings + text boxes) ───────────────────────
+const annSvg = document.getElementById('ann-svg');
+const annLabels = {};  // regionId → { el, line, dot }
+
+function buildAnnotations() {
+  Object.entries(BRAIN).forEach(([id, d]) => {
+    // Dashed SVG line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('stroke', hex(d.color));
+    line.setAttribute('stroke-width', '1.2');
+    line.setAttribute('stroke-dasharray', '5 4');
+    line.setAttribute('opacity', '0');
+    annSvg.appendChild(line);
+
+    // Dot at the brain anchor
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('r', '3.5');
+    dot.setAttribute('fill', hex(d.color));
+    dot.setAttribute('opacity', '0');
+    annSvg.appendChild(dot);
+
+    // HTML label box
+    const el = document.createElement('div');
+    el.className = 'ann-label ann-hidden';
+    el.style.borderColor = hex(d.color);
+    el.textContent = d.name;
+    el.addEventListener('click', () => {
+      if (view === 'main') openPopup(d, false);
+    });
+    document.body.appendChild(el);
+
+    annLabels[id] = { el, line, dot };
+  });
+}
+
+// Per-region outward nudge: pushes the label further from the brain center
+// so labels on densely packed regions don't sit on top of each other.
+const ANN_EXTRA = {
+  frontal:    110, parietal:  100, 'temporal-l': 105, 'temporal-r': 105,
+  occipital:  115, cerebellum: 95, brainstem:    100, limbic:        80,
+};
+
+// ─── Sub-view annotation labels ──────────────────────────────────────────────
+const subAnnItems = [];  // { el, line, dot, pos }
+
+function buildSubAnnotations(subs) {
+  subs.forEach(s => {
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('stroke', hex(s.color));
+    line.setAttribute('stroke-width', '1.2');
+    line.setAttribute('stroke-dasharray', '5 4');
+    line.setAttribute('opacity', '0');
+    annSvg.appendChild(line);
+
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('r', '3.5');
+    dot.setAttribute('fill', hex(s.color));
+    dot.setAttribute('opacity', '0');
+    annSvg.appendChild(dot);
+
+    const el = document.createElement('div');
+    el.className = 'ann-label ann-hidden';
+    el.style.borderColor = hex(s.color);
+    el.textContent = s.name;
+    el.addEventListener('click', () => openPopup(s, true));
+    document.body.appendChild(el);
+
+    subAnnItems.push({ el, line, dot, pos: s.pos });
+  });
+}
+
+function clearSubAnnotations() {
+  subAnnItems.forEach(a => { a.line.remove(); a.dot.remove(); a.el.remove(); });
+  subAnnItems.length = 0;
+}
+
+function updateSubAnnotations() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const brainCx = w * 0.5, brainCy = h * 0.46;
+  const show = view === 'sub' && !popup.classList.contains('open');
+
+  subAnnItems.forEach(a => {
+    if (!show) {
+      a.el.classList.add('ann-hidden');
+      a.line.setAttribute('opacity', '0');
+      a.dot.setAttribute('opacity', '0');
+      return;
+    }
+
+    const worldPos = new THREE.Vector3(...a.pos);
+    worldPos.applyMatrix4(root.matrixWorld);
+    const proj = worldPos.clone().project(camera);
+
+    if (proj.z >= 1) {
+      a.el.classList.add('ann-hidden');
+      a.line.setAttribute('opacity', '0');
+      a.dot.setAttribute('opacity', '0');
+      return;
+    }
+
+    const sx = (proj.x + 1) / 2 * w;
+    const sy = (-proj.y + 1) / 2 * h;
+    const dx = sx - brainCx, dy = sy - brainCy;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = dx / len, ny = dy / len;
+    const ex = sx + nx * 90, ey = sy + ny * 90;
+
+    a.line.setAttribute('x1', sx); a.line.setAttribute('y1', sy);
+    a.line.setAttribute('x2', ex); a.line.setAttribute('y2', ey);
+    a.line.setAttribute('opacity', '0.55');
+    a.dot.setAttribute('cx', sx);  a.dot.setAttribute('cy', sy);
+    a.dot.setAttribute('opacity', '0.9');
+    a.el.style.left = ex + 'px';
+    a.el.style.top  = ey + 'px';
+    a.el.classList.remove('ann-hidden');
+  });
+}
+
+// Brain local origin (controls.target is set to this)
+const BRAIN_CENTER = new THREE.Vector3(0, 0.1, 0);
+
+// How many labels to show at once — fewer on small screens to avoid clutter
+const MAX_ANN_VISIBLE = window.innerWidth < 600 ? 2 : (window.innerWidth < 1024 ? 3 : 4);
+
+function updateAnnotations() {
+  const w = window.innerWidth, h = window.innerHeight;
+  const brainCx = w * 0.5;
+  const brainCy = h * 0.46;
+  const isMain   = view === 'main';
+  const popupOpen = popup.classList.contains('open');
+
+  // ── Decide which regions are camera-facing ──────────────────────────────
+  // camDir = direction FROM brain center TOWARD camera (world space)
+  const camDir = camera.position.clone().sub(BRAIN_CENTER).normalize();
+
+  // Score each region by how directly it faces the camera.
+  // d.pos is in root-local space; root's rotation is tiny so we treat it as
+  // world space for this calculation — the error is negligible.
+  const scored = Object.entries(BRAIN).map(([id, d]) => {
+    const regionDir = new THREE.Vector3(...d.pos).sub(BRAIN_CENTER).normalize();
+    const facing = regionDir.dot(camDir); // +1 = directly facing, -1 = directly behind
+    return { id, d, facing };
+  });
+
+  // Sort best-facing first, keep only the top N with a positive facing score
+  scored.sort((a, b) => b.facing - a.facing);
+  const visibleIds = new Set(
+    scored
+      .filter(s => s.facing > 0.05)   // must be in the front hemisphere
+      .slice(0, MAX_ANN_VISIBLE)
+      .map(s => s.id)
+  );
+
+  // ── Position & show/hide each label ────────────────────────────────────
+  Object.entries(BRAIN).forEach(([id, d]) => {
+    const ann = annLabels[id];
+    if (!ann) return;
+
+    const show = isMain && !popupOpen && visibleIds.has(id);
+    if (!show) {
+      ann.el.classList.add('ann-hidden');
+      ann.line.setAttribute('opacity', '0');
+      ann.dot.setAttribute('opacity', '0');
+      return;
+    }
+
+    // Project 3-D region center → 2-D screen coords
+    const worldPos = new THREE.Vector3(...d.pos);
+    worldPos.applyMatrix4(root.matrixWorld);
+    const proj = worldPos.clone().project(camera);
+
+    if (proj.z >= 1) {  // behind near-plane
+      ann.el.classList.add('ann-hidden');
+      ann.line.setAttribute('opacity', '0');
+      ann.dot.setAttribute('opacity', '0');
+      return;
+    }
+
+    const sx = (proj.x + 1) / 2 * w;
+    const sy = (-proj.y + 1) / 2 * h;
+
+    // Radial direction from visual brain center outward
+    const dx = sx - brainCx;
+    const dy = sy - brainCy;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    const nx = dx / len;
+    const ny = dy / len;
+
+    const lineLen = ANN_EXTRA[id] ?? 95;
+    const ex = sx + nx * lineLen;
+    const ey = sy + ny * lineLen;
+
+    ann.line.setAttribute('x1', sx); ann.line.setAttribute('y1', sy);
+    ann.line.setAttribute('x2', ex); ann.line.setAttribute('y2', ey);
+    ann.line.setAttribute('opacity', '0.55');
+    ann.dot.setAttribute('cx', sx);  ann.dot.setAttribute('cy', sy);
+    ann.dot.setAttribute('opacity', '0.9');
+
+    ann.el.style.left = ex + 'px';
+    ann.el.style.top  = ey + 'px';
+    ann.el.classList.remove('ann-hidden');
+  });
+}
+
+// ─── Render loop ──────────────────────────────────────────────────────────────
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Gentle float
+  root.position.y = Math.sin(t * 0.38) * 0.06;
+  root.rotation.y = Math.sin(t * 0.18) * 0.025;
+
+  // Smooth GLB opacity fade + depth-sort fix.
+  // When the brain is fully opaque we MUST turn off transparent so WebGL
+  // writes depth values correctly — without this some meshes disappear behind
+  // others (the classic transparent-object sorting artefact).
+  if (glbBrain) {
+    glbBrain.traverse(child => {
+      if (child.isMesh && child.material) {
+        const diff = glbTargetOpacity - child.material.opacity;
+        if (Math.abs(diff) > 0.001) child.material.opacity += diff * 0.08;
+        const shouldBeTransparent = child.material.opacity < 0.999;
+        if (child.material.transparent !== shouldBeTransparent) {
+          child.material.transparent = shouldBeTransparent;
+          child.material.needsUpdate = true;
+        }
+      }
+    });
+  }
+
+  // Smooth indicator sphere opacity fade
+  Object.values(indicatorMeshes).forEach(m => {
+    if (m.userData.targetOp !== undefined) {
+      const diff = m.userData.targetOp - m.material.opacity;
+      if (Math.abs(diff) > 0.001) m.material.opacity += diff * 0.1;
+    }
+  });
+
+  // Smooth sub-sphere opacity fade — disable transparency at full opacity
+  // so depth writes are correct and blobs never disappear behind each other.
+  subMeshes.forEach(m => {
+    if (m.userData.targetOp !== undefined) {
+      const diff = m.userData.targetOp - m.material.opacity;
+      if (Math.abs(diff) > 0.001) m.material.opacity += diff * 0.09;
+      const needsTransparent = m.material.opacity < 0.999;
+      if (m.material.transparent !== needsTransparent) {
+        m.material.transparent = needsTransparent;
+        m.material.needsUpdate = true;
+      }
+    }
+  });
+
+  // Smooth glow shell opacity fade (target: 0.18 when visible)
+  glowShells.forEach(m => {
+    if (m.userData.targetOp !== undefined) {
+      const diff = m.userData.targetOp - m.material.opacity;
+      if (Math.abs(diff) > 0.001) m.material.opacity += diff * 0.08;
+    }
+  });
+
+  updateAnnotations();
+  updateSubAnnotations();
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
