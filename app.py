@@ -173,7 +173,7 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
-@app.route('/brain')
+@app.route('/brain/')
 def brain():
     return send_from_directory('.', 'index.html')
 
