@@ -26,6 +26,10 @@ COPY static/ ./static/
 # info.pdf is NOT copied — it's only needed for preprocessing, not at runtime.
 COPY pages_data.json embeddings.npy ./
 
+# Copy brain viewer assets
+COPY index.html brain.glb ./
+COPY models/ ./models/
+
 EXPOSE 8000
 
 CMD ["gunicorn", "--bind=0.0.0.0:8000", "--timeout=600", "--workers=1", "--threads=4", "app:app"]
