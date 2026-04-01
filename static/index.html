@@ -41,9 +41,12 @@
         }
         .header-title { font-size: 18px; font-weight: 600; }
         .header-sub   { font-size: 12px; opacity: 0.75; margin-top: 2px; }
-        .clear-btn {
+        .header-actions {
             position: absolute;
             left: 16px; top: 50%; transform: translateY(-50%);
+            display: flex; gap: 8px; align-items: center;
+        }
+        .clear-btn {
             background: rgba(255,255,255,0.15);
             color: white; border: 1px solid rgba(255,255,255,0.3);
             border-radius: 8px; padding: 6px 14px;
@@ -51,6 +54,17 @@
             transition: background 0.2s;
         }
         .clear-btn:hover { background: rgba(255,255,255,0.25); }
+        .brain-btn {
+            background: rgba(255,255,255,0.22);
+            color: white; border: 1px solid rgba(255,255,255,0.4);
+            border-radius: 8px; padding: 6px 14px;
+            cursor: pointer; font-size: 13px; font-family: inherit;
+            font-weight: 600;
+            transition: background 0.2s;
+            text-decoration: none;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .brain-btn:hover { background: rgba(255,255,255,0.35); }
 
         /* ─── Chat Area ─── */
         .chat-area {
@@ -260,7 +274,10 @@
         <div class="header-title">עוזר הלימוד – מבוא לפסיכולוגיה</div>
         <div class="header-sub">שאל שאלות על הספר וקבל תשובות עם מספרי עמוד</div>
     </div>
-    <button class="clear-btn" onclick="clearChat()">🗑 נקה שיחה</button>
+    <div class="header-actions">
+        <a class="brain-btn" href="/brain">🧠 מודל מוח</a>
+        <button class="clear-btn" onclick="clearChat()">🗑 נקה</button>
+    </div>
 </div>
 
 <div class="chat-area" id="chatArea">

@@ -208,12 +208,163 @@
     #ann-svg line, #ann-svg circle {
       transition: opacity 0.4s ease;
     }
+
+    /* ── Brain Mini Chat ─────────────────────────────────── */
+    #brain-chat-toggle {
+      position: fixed; bottom: 28px; right: 28px;
+      width: 52px; height: 52px;
+      background: linear-gradient(135deg, #5b1a7a, #8b42f5);
+      border: none; border-radius: 50%;
+      color: white; font-size: 22px;
+      cursor: pointer; z-index: 300;
+      box-shadow: 0 4px 20px rgba(139,66,245,0.55);
+      display: flex; align-items: center; justify-content: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #brain-chat-toggle:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 28px rgba(139,66,245,0.75);
+    }
+
+    #brain-chat-panel {
+      position: fixed; bottom: 92px; right: 28px;
+      width: 320px; height: 440px;
+      background: rgba(8, 12, 28, 0.97);
+      border: 1px solid rgba(139,66,245,0.35);
+      border-radius: 18px;
+      display: flex; flex-direction: column;
+      z-index: 300;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7),
+                  0 0 0 1px rgba(255,255,255,0.04);
+      backdrop-filter: blur(20px);
+      overflow: hidden;
+      transform: scale(0.85) translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1),
+                  opacity 0.2s ease;
+      font-family: 'Segoe UI', 'Arial Hebrew', system-ui, sans-serif;
+    }
+    #brain-chat-panel.open {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    #bc-header {
+      padding: 14px 16px 12px;
+      background: linear-gradient(135deg, rgba(91,26,122,0.9), rgba(139,66,245,0.7));
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    #bc-header-title {
+      font-size: 14px; font-weight: 700; color: white;
+      direction: rtl;
+    }
+    #bc-header-sub {
+      font-size: 11px; color: rgba(255,255,255,0.6);
+      direction: rtl; margin-top: 2px;
+    }
+    #bc-close {
+      background: rgba(255,255,255,0.15); border: none;
+      color: white; border-radius: 50%; width: 28px; height: 28px;
+      cursor: pointer; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: background 0.2s;
+    }
+    #bc-close:hover { background: rgba(255,255,255,0.28); }
+
+    #bc-messages {
+      flex: 1; overflow-y: auto; padding: 14px 12px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    #bc-messages::-webkit-scrollbar { width: 4px; }
+    #bc-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+    .bc-msg {
+      max-width: 88%;
+      font-size: 13px; line-height: 1.6;
+      padding: 9px 13px; border-radius: 14px;
+      direction: rtl; word-break: break-word;
+    }
+    .bc-msg.bot {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.88);
+      border-bottom-right-radius: 4px;
+      align-self: flex-end;
+    }
+    .bc-msg.user {
+      background: linear-gradient(135deg, #5b1a7a, #8b42f5);
+      color: white;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+    }
+    .bc-msg.typing {
+      background: rgba(255,255,255,0.08);
+      color: rgba(255,255,255,0.5);
+      align-self: flex-end; font-style: italic; font-size: 12px;
+    }
+
+    #bc-input-row {
+      padding: 10px 12px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; gap: 8px; align-items: flex-end;
+      flex-shrink: 0;
+    }
+    #bc-input {
+      flex: 1; background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px; color: white;
+      padding: 8px 12px; font-size: 13px;
+      font-family: inherit; resize: none; outline: none;
+      direction: rtl; min-height: 36px; max-height: 90px;
+      transition: border-color 0.2s;
+    }
+    #bc-input::placeholder { color: rgba(255,255,255,0.3); }
+    #bc-input:focus { border-color: rgba(139,66,245,0.7); }
+    #bc-send {
+      width: 36px; height: 36px; flex-shrink: 0;
+      background: linear-gradient(135deg, #5b1a7a, #8b42f5);
+      border: none; border-radius: 10px; color: white;
+      cursor: pointer; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.2s;
+    }
+    #bc-send:hover { opacity: 0.85; }
+    #bc-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    @media (max-width: 480px) {
+      #brain-chat-panel { width: calc(100vw - 32px); right: 16px; bottom: 82px; }
+      #brain-chat-toggle { bottom: 20px; right: 16px; }
+    }
   </style>
 </head>
 <body>
 
 <canvas id="canvas"></canvas>
 <svg id="ann-svg"></svg>
+
+<!-- Brain mini-chat -->
+<button id="brain-chat-toggle" title="שאל שאלה על המוח" onclick="toggleBrainChat()">💬</button>
+<div id="brain-chat-panel">
+  <div id="bc-header">
+    <div>
+      <div id="bc-header-title">🧠 שאל על המוח</div>
+      <div id="bc-header-sub">שאלות על אזורי המוח ותפקודיהם</div>
+    </div>
+    <button id="bc-close" onclick="toggleBrainChat()">✕</button>
+  </div>
+  <div id="bc-messages">
+    <div class="bc-msg bot">שלום! אני כאן לענות על שאלות לגבי אזורי המוח ותפקודיהם. לחץ על אזור במודל או שאל אותי כל שאלה.</div>
+  </div>
+  <div id="bc-input-row">
+    <textarea id="bc-input" placeholder="שאל שאלה..." rows="1"
+      onkeydown="bcHandleKey(event)" oninput="bcResize(this)"></textarea>
+    <button id="bc-send" onclick="bcSend()">➤</button>
+  </div>
+</div>
+
 <div id="loading">טוען מודל מוח…</div>
 <div id="hud-title">מודל מוח</div>
 <div id="hud-sub">לחץ על אזור לחקירה</div>
@@ -1144,6 +1295,112 @@ function animate() {
 }
 
 animate();
+</script>
+
+<script>
+// ─── Brain Mini Chat ──────────────────────────────────────────────────────────
+const bcPanel   = document.getElementById('brain-chat-panel');
+const bcMsgs    = document.getElementById('bc-messages');
+const bcInput   = document.getElementById('bc-input');
+const bcSendBtn = document.getElementById('bc-send');
+let   bcLoading = false;
+
+function toggleBrainChat() {
+  bcPanel.classList.toggle('open');
+  if (bcPanel.classList.contains('open')) {
+    setTimeout(() => bcInput.focus(), 300);
+  }
+}
+
+function bcScrollBottom() { bcMsgs.scrollTop = bcMsgs.scrollHeight; }
+
+function bcResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+}
+
+function bcHandleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); bcSend(); }
+}
+
+function bcAppend(text, role) {
+  const div = document.createElement('div');
+  div.className = 'bc-msg ' + role;
+  div.textContent = text;
+  bcMsgs.appendChild(div);
+  bcScrollBottom();
+  return div;
+}
+
+// Pre-fill with the currently hovered/selected region context
+function bcGetRegionContext() {
+  // Try to get selected region name from HUD subtitle
+  const sub = document.getElementById('hud-sub').textContent;
+  if (sub && sub.startsWith('חוקרים:')) {
+    return sub.replace('חוקרים:', '').trim();
+  }
+  return '';
+}
+
+async function bcSend() {
+  const q = bcInput.value.trim();
+  if (!q || bcLoading) return;
+
+  bcInput.value = '';
+  bcResize(bcInput);
+  bcAppend(q, 'user');
+
+  bcLoading = true;
+  bcSendBtn.disabled = true;
+
+  const typing = bcAppend('...', 'typing');
+
+  const region = bcGetRegionContext();
+
+  try {
+    const res = await fetch('/brain-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q, region: region }),
+    });
+
+    typing.remove();
+
+    if (!res.ok) throw new Error('שגיאת שרת');
+
+    const reader = res.body.getReader();
+    const dec    = new TextDecoder();
+    const ansDiv = bcAppend('', 'bot');
+    let   buf    = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          const raw = line.slice(6).trim();
+          if (raw === '[DONE]') break;
+          try {
+            const obj = JSON.parse(raw);
+            const chunk = obj.delta ?? obj.text ?? obj.content ?? '';
+            if (chunk) { ansDiv.textContent += chunk; bcScrollBottom(); }
+          } catch {}
+        }
+      }
+    }
+    if (!ansDiv.textContent) ansDiv.textContent = 'לא הצלחתי לעבד את התשובה.';
+  } catch (err) {
+    typing.remove();
+    bcAppend('שגיאה: ' + err.message, 'bot');
+  } finally {
+    bcLoading = false;
+    bcSendBtn.disabled = false;
+  }
+}
+
 </script>
 </body>
 </html>

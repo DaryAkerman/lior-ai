@@ -252,5 +252,62 @@ def chat():
     )
 
 
+BRAIN_SYSTEM_PROMPT = """אתה עוזר לימוד מומחה בנוירואנטומיה ופסיכולוגיה ביולוגית, המתמחה בספר "מבוא לפסיכולוגיה" מאת גריג וזימברדו.
+תפקידך לענות על שאלות הקשורות לאזורי המוח, תפקודיהם, והקשר בינהם לבין ההתנהגות האנושית.
+ענה בעברית בתשובות קצרות, ממוקדות וברורות.
+אם יש מידע רלוונטי בספר, ציין את מספר העמוד בפורמט [עמוד X].
+אל תמציא מידע שאינו מופיע בספר."""
+
+
+@app.route('/brain-chat', methods=['POST'])
+def brain_chat():
+    data     = request.get_json()
+    question = data.get('question', '').strip()
+    region   = data.get('region', '').strip()  # currently viewed brain region
+
+    if not question:
+        return jsonify({'error': 'יש להזין שאלה'}), 400
+
+    relevant, _ = find_relevant_pages(question)
+
+    context = "\n\n".join(
+        f"=== עמוד {p['page']} ===\n{p['text']}"
+        for p in relevant
+    )
+
+    region_note = f'המשתמש כרגע צופה באזור "{region}" במודל המוח התלת-ממדי. ' if region else ''
+
+    user_message = (
+        f'{region_note}'
+        f'להלן קטעים רלוונטיים מהספר:\n\n'
+        f'{context}\n\n---\n\nשאלה: {question}'
+    )
+
+    def generate():
+        full_text = ''
+        try:
+            with client.messages.stream(
+                model='claude-opus-4-6',
+                max_tokens=1024,
+                system=BRAIN_SYSTEM_PROMPT,
+                messages=[{'role': 'user', 'content': user_message}]
+            ) as stream:
+                for chunk in stream.text_stream:
+                    full_text += chunk
+                    yield f"data: {json.dumps({'text': chunk}, ensure_ascii=False)}\n\n"
+
+            pages = extract_page_numbers(full_text)
+            yield f"data: {json.dumps({'done': True, 'pages': pages}, ensure_ascii=False)}\n\n"
+
+        except Exception as e:
+            yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype='text/event-stream',
+        headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=False, port=5000)
