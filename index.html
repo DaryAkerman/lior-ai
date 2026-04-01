@@ -6,7 +6,7 @@
   <title>3D Brain Model</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #080818; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background: #080818; overflow: hidden; font-family: 'Segoe UI', 'Arial Hebrew', 'David', system-ui, sans-serif; }
     #canvas { display: block; }
 
     /* ── Loading ─────────────────────────────────────── */
@@ -53,15 +53,17 @@
     #popup-bar { width: 48px; height: 4px; border-radius: 2px; margin-bottom: 18px; }
     #popup-category {
       font-size: 10px; text-transform: uppercase;
-      letter-spacing: 2.5px; color: rgba(255,255,255,0.35); margin-bottom: 6px;
+      letter-spacing: 1.5px; color: rgba(255,255,255,0.35); margin-bottom: 6px;
+      text-align: right;
     }
     #popup-title {
       font-size: 22px; font-weight: 700; margin-bottom: 14px;
-      color: #fff; line-height: 1.2;
+      color: #fff; line-height: 1.4; text-align: right;
     }
     #popup-desc {
-      font-size: 13.5px; line-height: 1.75;
+      font-size: 13.5px; line-height: 1.85;
       color: rgba(255,255,255,0.68); margin-bottom: 22px;
+      text-align: right;
     }
     .popup-btns { display: flex; gap: 10px; }
     .pbtn {
@@ -115,10 +117,10 @@
       border-radius: 30px; cursor: pointer; font-size: 13px;
       font-weight: 600; z-index: 100;
       opacity: 0; pointer-events: none; transition: all 0.3s;
-      backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px); direction: rtl;
     }
     #btn-back.show { opacity: 1; pointer-events: all; }
-    #btn-back:hover { background: rgba(255,255,255,0.13); transform: translateX(-2px); }
+    #btn-back:hover { background: rgba(255,255,255,0.13); transform: translateX(2px); }
 
     /* ── Legend ─────────────────────────────────────── */
     #legend {
@@ -181,7 +183,7 @@
       border-radius: 8px;
       padding: 5px 11px;
       font-size: 11px; font-weight: 600;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.3px;
       color: rgba(255,255,255,0.88);
       cursor: pointer;
       z-index: 40;
@@ -192,6 +194,7 @@
       transform: translate(-50%, -50%);
       box-shadow: 0 4px 18px rgba(0,0,0,0.5);
       transition: background 0.18s, transform 0.18s, opacity 0.35s;
+      direction: rtl;
     }
     .ann-label:hover {
       background: rgba(22, 34, 72, 0.97);
@@ -211,22 +214,22 @@
 
 <canvas id="canvas"></canvas>
 <svg id="ann-svg"></svg>
-<div id="loading">Loading Brain Model…</div>
-<div id="hud-title">Brain Model</div>
-<div id="hud-sub">Click any region to explore</div>
-<button id="btn-back">← Back to full brain</button>
+<div id="loading">טוען מודל מוח…</div>
+<div id="hud-title">מודל מוח</div>
+<div id="hud-sub">לחץ על אזור לחקירה</div>
+<button id="btn-back">→ חזרה למוח המלא</button>
 <div id="tooltip"></div>
 <div id="legend"></div>
 
 <div id="dim"></div>
-<div id="popup">
+<div id="popup" dir="rtl">
   <div id="popup-bar"></div>
   <div id="popup-category"></div>
   <div id="popup-title"></div>
   <div id="popup-desc"></div>
   <div class="popup-btns">
-    <button class="pbtn" id="btn-explore">Explore Sub-regions →</button>
-    <button class="pbtn" id="btn-close">Close</button>
+    <button class="pbtn" id="btn-explore">← חקור אזורים</button>
+    <button class="pbtn" id="btn-close">סגור</button>
   </div>
 </div>
 
@@ -249,139 +252,139 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // (brain ~3 units wide, centered at origin, Y+ up, Z+ front)
 const BRAIN = {
   'frontal': {
-    name: 'Frontal Lobe', category: 'Cerebral Cortex', color: 0xf87171, modelFile: 'frontal.glb',
-    desc: 'The largest lobe, responsible for executive functions — planning, decision-making, impulse control, working memory, and voluntary movement. Home to your personality and judgment.',
+    name: 'אונה המצחית', category: 'קורטקס מוחי', color: 0xf87171, modelFile: 'frontal.glb',
+    desc: 'האונה הגדולה ביותר, אחראית על תפקודים ניהוליים — תכנון, קבלת החלטות, שליטה בדחפים, זיכרון עבודה ותנועה רצונית. לתאונות הפוגעות באונות המצח יכולות להיות השפעות הרסניות על פעילות האדם ועל אישיותו.',
     pos: [0, 0.55, 1.35], scl: [1.85, 1.25, 1.3],
     subs: [
-      { id:'pfc',   name:'Prefrontal Cortex',      category:'Frontal Lobe', color:0xef4444,
-        desc:'The "CEO" of the brain. Controls decision-making, planning, personality expression, and social behavior. Heavily implicated in ADHD and schizophrenia.',
+      { id:'pfc',   name:'קורטקס פרה-פרונטלי',      category:'אונה המצחית', color:0xef4444,
+        desc:'ה"מנכ"ל" של המוח. שולט בקבלת החלטות, תכנון, ביטוי האישיות והתנהגות חברתית. מעורב רבות ב-ADHD ובסכיזופרניה. מקושר קשר הדוק עם תפקודים קוגניטיביים ורגשיים.',
         pos:[-0.05, 0.45, 1.2], scl:[1.1, 0.8, 0.75] },
-      { id:'mc',    name:'Motor Cortex',            category:'Frontal Lobe', color:0xfb923c,
-        desc:'The primary motor cortex controls all voluntary body movements. It maps the entire body in a "motor homunculus" — disproportionately large for hands and face.',
+      { id:'mc',    name:'קורטקס מוטורי',            category:'אונה המצחית', color:0xfb923c,
+        desc:'הקורטקס המוטורי הראשוני שולט בכל תנועות הגוף הרצוניות. הוא ממפה את הגוף כולו ב"הומונקולוס מוטורי" — ידיים ופנים מיוצגים בשטח גדול במיוחד.',
         pos:[0, 0.9, 0.4], scl:[1.55, 0.45, 0.5] },
-      { id:'broca', name:"Broca's Area",            category:'Frontal Lobe', color:0xfbbf24,
-        desc:"Located in the left frontal lobe, Broca's area drives speech production. Damage here causes halting, effortful speech while comprehension stays mostly intact.",
+      { id:'broca', name:'אזור ברוקה',               category:'אונה המצחית', color:0xfbbf24,
+        desc:'ממוקם באונה המצחית השמאלית, אזור ברוקה שולט בייצור הדיבור. פגיעה באזור זה גורמת לאפזיה של ברוקה — דיבור מקוטע ומאומץ בעוד ההבנה נשמרת.',
         pos:[-0.85, 0.15, 0.85], scl:[0.5, 0.4, 0.5] },
-      { id:'ofc',   name:'Orbitofrontal Cortex',    category:'Frontal Lobe', color:0xf97316,
-        desc:'Sits just above the eye sockets. Key for emotional decision-making, reward processing, and impulse control. Heavily connected to the limbic system.',
+      { id:'ofc',   name:'קורטקס אורביטופרונטלי',    category:'אונה המצחית', color:0xf97316,
+        desc:'יושב ממש מעל שקעי העיניים. מפתח לקבלת החלטות רגשיות, עיבוד תגמול ושליטה בדחפים. מקושר רבות למערכת הלימבית.',
         pos:[0, -0.05, 1.55], scl:[0.85, 0.45, 0.5] },
     ]
   },
   'parietal': {
-    name: 'Parietal Lobe', category: 'Cerebral Cortex', color: 0xfb923c, modelFile: 'parietal.glb',
-    desc: 'Integrates sensory input — touch, pain, temperature, proprioception — and handles spatial reasoning, navigation, and body awareness.',
+    name: 'אונה הקודקודית', category: 'קורטקס מוחי', color: 0xfb923c, modelFile: 'parietal.glb',
+    desc: 'משלבת קלט חושי — מגע, כאב, טמפרטורה, פרופריוצפציה — ומטפלת בהיגיון מרחבי, ניווט ומודעות לגוף. מספקת לנו מידע על מיקום הגוף בחלל.',
     pos: [0, 1.2, -0.15], scl: [1.7, 0.95, 1.05],
     subs: [
-      { id:'s1',  name:'Somatosensory Cortex',      category:'Parietal Lobe', color:0xfcd34d,
-        desc:'Receives and processes all body sensation. Like the motor cortex, it contains a "sensory homunculus" — the lips and hands have enormous representation here.',
+      { id:'s1',  name:'קורטקס סומטוסנסורי',         category:'אונה הקודקודית', color:0xfcd34d,
+        desc:'מקבל ומעבד את כל תחושות הגוף. כמו הקורטקס המוטורי, הוא מכיל "הומונקולוס חושי" — שפתיים וידיים מיוצגות בשטח ענקי יחסית לגודלן האמיתי.',
         pos:[0, 0.85, 0.3], scl:[1.45, 0.42, 0.5] },
-      { id:'ppc', name:'Posterior Parietal Cortex', category:'Parietal Lobe', color:0xf59e0b,
-        desc:'Integrates visual and spatial information to guide movements and build an internal map of surrounding space. Damage causes "neglect" syndrome.',
+      { id:'ppc', name:'קורטקס קודקודי אחורי',        category:'אונה הקודקודית', color:0xf59e0b,
+        desc:'משלב מידע חזותי ומרחבי לצורך הנחיית תנועות ובניית מפה פנימית של החלל. פגיעה גורמת לתסמונת "הזנחה" — אדישות לצד אחד של המרחב.',
         pos:[0, 1.1, -0.55], scl:[1.35, 0.6, 0.65] },
-      { id:'ag',  name:'Angular Gyrus',             category:'Parietal Lobe', color:0xd97706,
-        desc:'A hub region at the junction of parietal, temporal, and occipital lobes. Involved in language, number processing, spatial cognition, and self-awareness.',
+      { id:'ag',  name:'הגירוס הזוויתי',              category:'אונה הקודקודית', color:0xd97706,
+        desc:'אזור מרכזי בצומת האונות הקודקודית, הרקתית והעורפית. מעורב בשפה, עיבוד מספרים, קוגניציה מרחבית ומודעות עצמית.',
         pos:[-0.8, 0.7, -0.4], scl:[0.55, 0.45, 0.5] },
     ]
   },
   'temporal-l': {
-    name: 'Temporal Lobe (Left)', category: 'Cerebral Cortex', color: 0xfde68a, modelFile: 'temporal_l.glb',
-    desc: 'The left temporal lobe dominates language comprehension, verbal memory, and semantic knowledge. Also processes auditory signals.',
+    name: 'האונה הרקתית (שמאל)', category: 'קורטקס מוחי', color: 0xfde68a, modelFile: 'temporal_l.glb',
+    desc: 'האונה הרקתית השמאלית שולטת בהבנת השפה, זיכרון מילולי וידע סמנטי. אזור ורניקה, האחראי על הבנת הדיבור, ממוקם כאן. כמו כן מעבדת אותות שמיעתיים.',
     pos: [-1.55, -0.05, 0.15], scl: [0.7, 0.95, 1.45],
     subs: [
-      { id:'a1-l',     name:'Auditory Cortex',          category:'Left Temporal', color:0xfef08a,
-        desc:'Primary auditory cortex (A1) decodes the pitch, rhythm, and location of sounds arriving from both ears. The left side is more attuned to speech sounds.',
+      { id:'a1-l',     name:'קורטקס שמיעתי',          category:'רקתית שמאל', color:0xfef08a,
+        desc:'הקורטקס השמיעתי הראשוני מפענח את גובה הצליל, הקצב ומיקום הצלילים המגיעים משתי האוזניים. הצד השמאלי רגיש יותר לצלילי דיבור.',
         pos:[-1.25, 0.25, 0.25], scl:[0.5, 0.42, 0.5] },
-      { id:'wernicke', name:"Wernicke's Area",           category:'Left Temporal', color:0xfacc15,
-        desc:"Wernicke's area enables language comprehension. Damage produces 'fluent aphasia' — patients speak in grammatical-sounding but meaningless word-salad.",
+      { id:'wernicke', name:'אזור ורניקה',             category:'רקתית שמאל', color:0xfacc15,
+        desc:'אזור ורניקה מאפשר הבנת שפה. פגיעה גורמת ל"אפזיה שוטפת" — המטופל מדבר ברצף תקין תחבירית אך חסר משמעות, כאילו מערבל מילים.',
         pos:[-1.3, 0.0, -0.35], scl:[0.5, 0.4, 0.5] },
-      { id:'itg',      name:'Inferior Temporal Gyrus',  category:'Left Temporal', color:0xca8a04,
-        desc:'Involved in high-level visual processing and object recognition, particularly matching visual input to verbal labels stored in semantic memory.',
+      { id:'itg',      name:'הגירוס הרקתי התחתון',    category:'רקתית שמאל', color:0xca8a04,
+        desc:'מעורב בעיבוד חזותי ברמה גבוהה וזיהוי עצמים, בפרט התאמת קלט חזותי לתוויות מילוליות השמורות בזיכרון הסמנטי.',
         pos:[-1.35, -0.4, -0.1], scl:[0.5, 0.4, 0.6] },
     ]
   },
   'temporal-r': {
-    name: 'Temporal Lobe (Right)', category: 'Cerebral Cortex', color: 0xfde68a, modelFile: 'temporal_r.glb',
-    desc: 'The right temporal lobe excels at music recognition, face identification, and non-verbal pattern recognition. Spatial memory also lives here.',
+    name: 'האונה הרקתית (ימין)', category: 'קורטקס מוחי', color: 0xfde68a, modelFile: 'temporal_r.glb',
+    desc: 'האונה הרקתית הימנית מצטיינת בזיהוי מוזיקה, זיהוי פנים ודפוסים לא-מילוליים. גם זיכרון מרחבי שוכן כאן. היא ממלאת תפקיד מרכזי בעיבוד רגשי.',
     pos: [1.55, -0.05, 0.15], scl: [0.7, 0.95, 1.45],
     subs: [
-      { id:'a1-r', name:'Auditory Cortex',              category:'Right Temporal', color:0xfef08a,
-        desc:'The right auditory cortex specialises in processing music, tone, and the emotional prosody of voices — the "how" of speech rather than the "what".',
+      { id:'a1-r', name:'קורטקס שמיעתי',              category:'רקתית ימין', color:0xfef08a,
+        desc:'הקורטקס השמיעתי הימני מתמחה בעיבוד מוזיקה, טון ופרוזודיה רגשית של קולות — ה"איך" של הדיבור ולא ה"מה".',
         pos:[1.25, 0.25, 0.25], scl:[0.5, 0.42, 0.5] },
-      { id:'ffa',  name:'Fusiform Face Area',           category:'Right Temporal', color:0xeab308,
-        desc:'A dedicated face-recognition module. It activates strongly to human faces, fires less for objects, and its damage causes prosopagnosia — the inability to recognise faces.',
+      { id:'ffa',  name:'אזור הפנים הציר',            category:'רקתית ימין', color:0xeab308,
+        desc:'מודול ייעודי לזיהוי פנים. מופעל בעוצמה לפנים אנושיות, פחות לעצמים. פגיעה גורמת לפרוסופגנוזיה — חוסר יכולת לזהות פנים מוכרות.',
         pos:[1.35, -0.05, -0.15], scl:[0.5, 0.4, 0.55] },
-      { id:'mst',  name:'Parahippocampal Place Area',   category:'Right Temporal', color:0xa16207,
-        desc:'Responds powerfully to images of places and scenes, forming the neural basis of spatial navigation and "getting your bearings" in an environment.',
+      { id:'mst',  name:'אזור היפוקמפוס-פארא',        category:'רקתית ימין', color:0xa16207,
+        desc:'מגיב בעוצמה לתמונות של מקומות וסצנות, ומהווה את הבסיס העצבי לניווט מרחבי ולהתמצאות בסביבה.',
         pos:[1.3, -0.4, -0.2], scl:[0.5, 0.4, 0.55] },
     ]
   },
   'occipital': {
-    name: 'Occipital Lobe', category: 'Cerebral Cortex', color: 0xa78bfa, modelFile: 'occipital.glb',
-    desc: "The brain's dedicated visual processing centre. Receives raw input from the eyes and constructs our rich perception of colour, shape, motion, and depth.",
+    name: 'האונה העורפית', category: 'קורטקס מוחי', color: 0xa78bfa, modelFile: 'occipital.glb',
+    desc: 'מרכז עיבוד הראייה של המוח. מקבל קלט גולמי מהעיניים ובונה את תפיסתנו העשירה של צבע, צורה, תנועה ועומק. גמישות הקורטקס החזותי מוכחת גם אצל בוגרים.',
     pos: [0, 0.35, -1.55], scl: [1.5, 1.0, 0.85],
     subs: [
-      { id:'v1', name:'Primary Visual Cortex (V1)', category:'Occipital Lobe', color:0xc084fc,
-        desc:"V1 is the brain's first cortical processing stage for vision. It detects edges, orientation, contrast, and spatial frequency before passing data to higher areas.",
+      { id:'v1', name:'קורטקס ראייה ראשוני (V1)',     category:'אונה העורפית', color:0xc084fc,
+        desc:'V1 הוא שלב העיבוד הקורטיקלי הראשון של הראייה. הוא מזהה קצוות, כיוון, ניגודיות ותדר מרחבי לפני העברת הנתונים לאזורים גבוהים יותר.',
         pos:[0, 0.25, -1.3], scl:[0.85, 0.6, 0.4] },
-      { id:'v4', name:'V4 — Colour Area',           category:'Occipital Lobe', color:0x8b5cf6,
-        desc:'V4 processes colour and form. Patients with damage here see the world in shades of grey (cerebral achromatopsia) despite having normal eyes.',
+      { id:'v4', name:'V4 — אזור הצבע',               category:'אונה העורפית', color:0x8b5cf6,
+        desc:'V4 מעבד צבע וצורה. מטופלים עם פגיעה כאן רואים את העולם בגוני אפור (אכרומטופסיה מוחית) למרות שעיניהם תקינות לחלוטין.',
         pos:[-0.6, 0.5, -1.1], scl:[0.45, 0.4, 0.4] },
-      { id:'mt', name:'MT / V5 — Motion Area',      category:'Occipital Lobe', color:0x7c3aed,
-        desc:'Area MT (middle temporal, also called V5) is specialised for visual motion. Damage produces akinetopsia — the inability to see movement, only frozen snapshots.',
+      { id:'mt', name:'MT / V5 — אזור התנועה',         category:'אונה העורפית', color:0x7c3aed,
+        desc:'אזור MT מתמחה בתנועה חזותית. פגיעה גורמת לאקינטופסיה — חוסר יכולת לראות תנועה, אלא רק תמונות קפואות.',
         pos:[0.6, 0.5, -1.1], scl:[0.45, 0.4, 0.4] },
     ]
   },
   'cerebellum': {
-    name: 'Cerebellum', category: 'Hindbrain', color: 0x34d399, modelFile: 'cerebellum.glb',
-    desc: 'The "little brain" packs more neurons than the rest of the brain combined. It fine-tunes balance, coordination, and motor learning — playing an instrument, riding a bike.',
+    name: 'מוחון', category: 'מוח אחורי', color: 0x34d399, modelFile: 'cerebellum.glb',
+    desc: 'ה"מוח הקטן" מכיל יותר נוירונים מכל שאר המוח ביחד. הוא מכוון שיווי משקל, קואורדינציה ולמידה מוטורית — נגינה בכלי נגינה, רכיבה על אופניים ופעולות מיומנות.',
     pos: [0, -0.55, -1.15], scl: [1.35, 0.8, 0.9],
     subs: [
-      { id:'cort-cb', name:'Cerebellar Cortex',       category:'Cerebellum', color:0x6ee7b7,
-        desc:'The layered outer surface containing Purkinje cells — some of the largest neurons in the brain. It receives and integrates sensory and motor signals to compute corrections.',
+      { id:'cort-cb', name:'קורטקס המוחון',            category:'מוחון', color:0x6ee7b7,
+        desc:'המשטח החיצוני המרובד המכיל תאי פורקינייה — מהנוירונים הגדולים ביותר במוח. מקבל ומשלב אותות חושיים ומוטוריים לחישוב תיקונים.',
         pos:[0, -0.35, -1.05], scl:[1.15, 0.38, 0.72] },
-      { id:'vermis',  name:'Vermis',                  category:'Cerebellum', color:0x10b981,
-        desc:'The narrow midline strip of the cerebellum coordinates axial (trunk and limb) movements, posture, gait, and eye motion. Vermis damage causes stumbling and wide-based gait.',
+      { id:'vermis',  name:'ורמיס',                    category:'מוחון', color:0x10b981,
+        desc:'הרצועה הצרה באמצע המוחון המתאמת תנועות צירי (גזע וגפיים), יציבה, הליכה ותנועות עיניים. פגיעה גורמת לכשלון ולצעידה רחבת בסיס.',
         pos:[0, -0.58, -1.12], scl:[0.32, 0.52, 0.7] },
-      { id:'dcn',     name:'Deep Cerebellar Nuclei',  category:'Cerebellum', color:0x059669,
-        desc:'Four pairs of nuclei buried inside the cerebellum (dentate, interpositus, fastigial, vestibular). They are the sole output gateway of the cerebellum.',
+      { id:'dcn',     name:'גרעינים מוחוניים עמוקים',  category:'מוחון', color:0x059669,
+        desc:'ארבעה זוגות של גרעינים קבורים בתוך המוחון (שן, בין-פוזיטוס, פסטיגיאלי, וסטיבולרי). הם שער הפלט היחיד של המוחון.',
         pos:[0, -0.70, -0.92], scl:[0.65, 0.32, 0.42] },
     ]
   },
   'brainstem': {
-    name: 'Brainstem', category: 'Hindbrain / Midbrain', color: 0xf472b6, modelFile: 'brainstem.glb',
-    desc: "The brainstem is life's control tower, governing breathing, heart rate, blood pressure, and arousal. It connects the cerebrum to the spinal cord and hosts 10 of 12 cranial nerves.",
+    name: 'גזע המוח', category: 'מוח אחורי / אמצעי', color: 0xf472b6, modelFile: 'brainstem.glb',
+    desc: 'גזע המוח הוא מגדל השליטה של החיים. המרכיבים הנמצאים בגזע המוח — מוח מוארך, גשר ותצורת הרשת — מנהלים נשימה, קצב לב, לחץ דם וערנות.',
     pos: [0, -0.85, -0.05], scl: [0.62, 1.05, 0.62],
     subs: [
-      { id:'midbrain', name:'Midbrain (Mesencephalon)', category:'Brainstem', color:0xec4899,
-        desc:'Controls eye movements, pupil dilation, and auditory/visual reflexes. Contains the substantia nigra (dopamine) and red nucleus (motor coordination).',
+      { id:'midbrain', name:'המוח האמצעי (מזנצפלון)',  category:'גזע המוח', color:0xec4899,
+        desc:'שולט בתנועות עיניים, הרחבת אישון ורפלקסים שמיעתיים/חזותיים. מכיל את הסובסטנציה ניגרה (מקור הדופמין) וגרעין האדום לקואורדינציה מוטורית.',
         pos:[0, -0.52, -0.05], scl:[0.52, 0.38, 0.52] },
-      { id:'pons',     name:'Pons',                     category:'Brainstem', color:0xf9a8d4,
-        desc:'Latin for "bridge". Connects cerebellum to cortex, regulates sleep/wake cycles, respiration, and carries signals for hearing, taste, and facial sensation.',
+      { id:'pons',     name:'הגשר',                    category:'גזע המוח', color:0xf9a8d4,
+        desc:'"גשר" בלטינית. מחבר את המוחון לקורטקס, מסדיר מחזורי שינה/ערות ונשימה, ומעביר אותות לשמיעה, טעם ותחושת פנים.',
         pos:[0, -0.88, -0.05], scl:[0.58, 0.38, 0.58] },
-      { id:'medulla',  name:'Medulla Oblongata',         category:'Brainstem', color:0xbe185d,
-        desc:'The most vital brain region. Controls heartbeat, blood pressure, and breathing. Also handles vomiting, coughing, and sneezing reflexes. Damage is immediately life-threatening.',
+      { id:'medulla',  name:'המוח המוארך',              category:'גזע המוח', color:0xbe185d,
+        desc:'אזור המוח החיוני ביותר. שולט בדופק, לחץ הדם ונשימה. מטפל גם ברפלקסי הקאה, שיעול והתעטשות. סיבי עצב המטפסים מן הגוף מצטלבים כאן.',
         pos:[0, -1.22, -0.05], scl:[0.48, 0.38, 0.48] },
     ]
   },
   'limbic': {
-    name: 'Limbic System', category: 'Subcortical', color: 0x60a5fa, modelFile: 'limbic.glb',
-    desc: 'The emotional and memory core of the brain. Bridges primitive survival instincts with higher cortical reasoning. Regulates emotion, motivation, memory, and the stress response.',
+    name: 'המערכת הלימבית', category: 'תת-קורטיקלי', color: 0x60a5fa, modelFile: 'limbic.glb',
+    desc: 'ליבת הרגש והזיכרון של המוח. מעורבת בתהליכי מוטיבציה, רגש וזיכרון. כמו כן מווסתת את חום הגוף, לחץ הדם ורמת הסוכר בדם.',
     pos: [0, 0.05, 0.1], scl: [0.72, 0.65, 0.72],
     subs: [
-      { id:'hippo',  name:'Hippocampus',     category:'Limbic System', color:0x3b82f6,
-        desc:"The brain's memory writer. Converts short-term experience into long-term memory and encodes spatial maps for navigation. One of the first casualties in Alzheimer's disease.",
+      { id:'hippo',  name:'היפוקמפוס',                 category:'מערכת לימבית', color:0x3b82f6,
+        desc:'ממלא תפקיד חשוב ברכישת זיכרונות. פגיעה בהיפוקמפוס עלולה לפגוע ביכולת ליצור זיכרונות חדשים. אחד מהראשונים שנפגעים במחלת האלצהיימר.',
         pos:[-0.52, -0.28, -0.22], scl:[0.48, 0.28, 0.62] },
-      { id:'amyg',   name:'Amygdala',        category:'Limbic System', color:0x8b5cf6,
-        desc:'The threat-detection nucleus. Triggers the fight-or-flight response in milliseconds and stamps emotional significance onto memories. Central to fear, anxiety, and aggression.',
+      { id:'amyg',   name:'אמיגדלה',                   category:'מערכת לימבית', color:0x8b5cf6,
+        desc:'ממלאת תפקיד בבקרה רגשית ובשינוי יצירת זיכרונות רגשיים. מפעילה תגובת "להילחם או לברוח". פגיעה באמיגדלה עשויה להיות בעלת השפעה מרגיעה.',
         pos:[-0.62, -0.08, 0.35], scl:[0.32, 0.28, 0.32] },
-      { id:'thal',   name:'Thalamus',        category:'Limbic System', color:0x0ea5e9,
-        desc:'The grand relay station. Nearly all sensory information (except smell) is routed through the thalamus before reaching the cortex. Also regulates consciousness and alertness.',
+      { id:'thal',   name:'תלמוס',                     category:'מערכת לימבית', color:0x0ea5e9,
+        desc:'תחנת הממסר הגדולה. כמעט כל המידע החושי (למעט ריח) מנותב דרך התלמוס לפני הגעתו לקורטקס. מסדיר גם מודעות וערנות.',
         pos:[0, 0.22, -0.08], scl:[0.58, 0.42, 0.58] },
-      { id:'hypo',   name:'Hypothalamus',    category:'Limbic System', color:0x06b6d4,
-        desc:"A tiny but mighty region controlling hunger, thirst, temperature, sleep, and the entire endocrine system via the pituitary gland. The brain's homeostatic thermostat.",
+      { id:'hypo',   name:'היפותלמוס',                 category:'מערכת לימבית', color:0x06b6d4,
+        desc:'אזור קטן אך עוצמתי השולט ברעב, צמא, טמפרטורה, שינה ובמערכת האנדוקרינית כולה דרך בלוטת יותרת המוח. הטרמוסטט ההומאוסטטי של המוח.',
         pos:[0, -0.18, 0.22], scl:[0.38, 0.28, 0.38] },
-      { id:'cingul', name:'Cingulate Cortex',category:'Limbic System', color:0x38bdf8,
-        desc:'A curved strip wrapping the corpus callosum. The anterior cingulate handles error detection, conflict monitoring, and empathy; the posterior cingulate aids autobiographical memory.',
+      { id:'cingul', name:'הקורטקס הצינגולרי',         category:'מערכת לימבית', color:0x38bdf8,
+        desc:'רצועה מעוקלת העוטפת את הגופיף. הצינגולרי הקדמי עוסק בזיהוי שגיאות, ניטור קונפליקטים ואמפתיה; האחורי מסייע בזיכרון אוטוביוגרפי.',
         pos:[0, 0.45, -0.05], scl:[0.32, 0.25, 0.9] },
     ]
   },
@@ -584,12 +587,12 @@ loader.load('./brain.glb',
   (progress) => {
     if (progress.total) {
       const pct = Math.round(progress.loaded / progress.total * 100);
-      document.getElementById('loading').textContent = `Loading Brain Model… ${pct}%`;
+      document.getElementById('loading').textContent = `טוען מודל מוח… ${pct}%`;
     }
   },
   (err) => {
     console.error('GLB load error:', err);
-    document.getElementById('loading').textContent = 'Error loading brain.glb — serve via a local web server.';
+    document.getElementById('loading').textContent = 'שגיאה בטעינת brain.glb — יש להריץ דרך שרת מקומי.';
   }
 );
 
@@ -688,7 +691,7 @@ function enterSubView(d) {
   buildSubAnnotations(d.subs);
 
   document.getElementById('btn-back').classList.add('show');
-  document.getElementById('hud-sub').textContent = `Exploring: ${d.name}`;
+  document.getElementById('hud-sub').textContent = `חוקרים: ${d.name}`;
   document.getElementById('legend').classList.add('hidden');
 
   const p = d.pos;
@@ -717,7 +720,7 @@ function backToMain() {
   }, 700);
 
   document.getElementById('btn-back').classList.remove('show');
-  document.getElementById('hud-sub').textContent = 'Click any region to explore';
+  document.getElementById('hud-sub').textContent = 'לחץ על אזור לחקירה';
   document.getElementById('legend').classList.remove('hidden');
 
   animCam([0, 1.2, 6.5], [0, 0.1, 0], 0.7);
