@@ -338,6 +338,22 @@
       #brain-chat-panel { width: calc(100vw - 32px); right: 16px; bottom: 82px; }
       #brain-chat-toggle { bottom: 20px; right: 16px; }
     }
+
+    /* ── Markdown inside bot messages ───────────────────────────────── */
+    .bc-msg.bot p { margin: 4px 0; }
+    .bc-msg.bot p:first-child { margin-top: 0; }
+    .bc-msg.bot p:last-child  { margin-bottom: 0; }
+    .bc-msg.bot strong { color: #fff; font-weight: 700; }
+    .bc-msg.bot em { color: rgba(255,255,255,0.85); font-style: italic; }
+    .bc-msg.bot ul, .bc-msg.bot ol { padding-right: 16px; margin: 6px 0; }
+    .bc-msg.bot li { margin: 2px 0; }
+    .bc-msg.bot h1, .bc-msg.bot h2, .bc-msg.bot h3 {
+      font-size: 14px; font-weight: 700; margin: 8px 0 4px; color: #fff;
+    }
+    .bc-msg.bot code {
+      background: rgba(255,255,255,0.12); border-radius: 4px;
+      padding: 1px 5px; font-size: 12px;
+    }
   </style>
 </head>
 <body>
@@ -384,6 +400,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -1295,6 +1312,40 @@ function animate() {
 }
 
 animate();
+
+// ─── Expose navigation API for mini-chat (module → global) ───────────────────
+window._brainLookup = (() => {
+  const lookup = [];
+  for (const [rid, r] of Object.entries(BRAIN)) {
+    lookup.push({ name: r.name, regionId: rid, subId: null });
+    for (const s of (r.subs || [])) {
+      lookup.push({ name: s.name, regionId: rid, subId: s.id });
+    }
+  }
+  // Longest names first so 'קורטקס פרה-פרונטלי' matches before 'קורטקס'
+  return lookup.sort((a, b) => b.name.length - a.name.length);
+})();
+
+window._brainNavigate = function(regionId, subId) {
+  const parentData = BRAIN[regionId];
+  if (!parentData) return;
+
+  // If we're already in a sub-view, go back first so the transition looks clean
+  if (view === 'sub') {
+    backToMain();
+    setTimeout(() => window._brainNavigate(regionId, subId), 750);
+    return;
+  }
+
+  // Enter sub-view for the parent region (zooms in and shows sub-region blobs)
+  enterSubView(parentData);
+
+  // If a specific sub-region was requested, open its popup after the animation
+  if (subId) {
+    const sub = parentData.subs.find(s => s.id === subId);
+    if (sub) setTimeout(() => openPopup(sub, true), 950);
+  }
+};
 </script>
 
 <script>
@@ -1332,6 +1383,16 @@ function bcAppend(text, role) {
   return div;
 }
 
+// Detect any brain region name mentioned in text; returns { regionId, subId } or null
+function bcDetectRegion(text) {
+  const lookup = window._brainLookup;
+  if (!lookup) return null;
+  for (const entry of lookup) {   // already sorted longest-first
+    if (text.includes(entry.name)) return entry;
+  }
+  return null;
+}
+
 // Pre-fill with the currently hovered/selected region context
 function bcGetRegionContext() {
   // Try to get selected region name from HUD subtitle
@@ -1349,6 +1410,12 @@ async function bcSend() {
   bcInput.value = '';
   bcResize(bcInput);
   bcAppend(q, 'user');
+
+  // Navigate the 3D model if a region name was mentioned
+  const regionMatch = bcDetectRegion(q);
+  if (regionMatch && window._brainNavigate) {
+    setTimeout(() => window._brainNavigate(regionMatch.regionId, regionMatch.subId), 250);
+  }
 
   bcLoading = true;
   bcSendBtn.disabled = true;
@@ -1368,10 +1435,21 @@ async function bcSend() {
 
     if (!res.ok) throw new Error('שגיאת שרת');
 
-    const reader = res.body.getReader();
-    const dec    = new TextDecoder();
-    const ansDiv = bcAppend('', 'bot');
-    let   buf    = '';
+    const reader   = res.body.getReader();
+    const dec      = new TextDecoder();
+    const ansDiv   = bcAppend('', 'bot');
+    let   buf      = '';
+    let   fullText = '';
+
+    // Render markdown to HTML; fall back to simple escaping if marked not loaded
+    function renderMd(md) {
+      if (typeof marked !== 'undefined') return marked.parse(md);
+      return md
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em>$1</em>')
+        .replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+    }
 
     while (true) {
       const { done, value } = await reader.read();
@@ -1386,12 +1464,12 @@ async function bcSend() {
           try {
             const obj = JSON.parse(raw);
             const chunk = obj.delta ?? obj.text ?? obj.content ?? '';
-            if (chunk) { ansDiv.textContent += chunk; bcScrollBottom(); }
+            if (chunk) { fullText += chunk; ansDiv.innerHTML = renderMd(fullText); bcScrollBottom(); }
           } catch {}
         }
       }
     }
-    if (!ansDiv.textContent) ansDiv.textContent = 'לא הצלחתי לעבד את התשובה.';
+    if (!fullText.trim()) ansDiv.textContent = 'לא הצלחתי לעבד את התשובה.';
   } catch (err) {
     typing.remove();
     bcAppend('שגיאה: ' + err.message, 'bot');
